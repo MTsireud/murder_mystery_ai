@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Interrogation Sim MVP</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="hero">
+        <div>
+          <p class="eyebrow" data-i18n="caseFile">Case File</p>
+          <h1 data-i18n="caseTitle">Backstage Silence</h1>
+          <p class="subtitle" data-i18n="caseSubtitle">Shared-world interrogation simulator</p>
+          <p id="caseHeadline" class="headline"></p>
+        </div>
+        <div class="status">
+          <div class="status-card">
+            <span class="label" data-i18n="timeElapsed">Time Elapsed</span>
+            <span id="timeElapsed" class="value">0 min</span>
+          </div>
+          <div class="status-card">
+            <span class="label" data-i18n="evidence">Evidence</span>
+            <ul id="evidenceList" class="chip-list"></ul>
+          </div>
+          <div class="status-card">
+            <span class="label" data-i18n="language">Language</span>
+            <select id="languageSelect" class="language-select">
+              <option value="en">English</option>
+              <option value="el">Ελληνικά</option>
+            </select>
+          </div>
+          <div class="status-card">
+            <span class="label" data-i18n="caseSelect">Case</span>
+            <select id="caseSelect" class="language-select"></select>
+          </div>
+          <div class="status-card">
+            <span class="label" data-i18n="modelMode">Model Mode</span>
+            <select id="modelModeSelect" class="language-select">
+              <option value="auto" data-i18n="modelAuto">Auto</option>
+              <option value="routine" data-i18n="modelRoutine">Routine</option>
+              <option value="critical" data-i18n="modelCritical">Critical</option>
+            </select>
+          </div>
+          <div class="status-card">
+            <span class="label" data-i18n="modelUsed">Model Used</span>
+            <span id="modelUsedValue" class="value">-</span>
+          </div>
+        </div>
+      </header>
+
+      <main class="grid">
+        <section class="panel characters">
+          <h2 data-i18n="characters">Characters</h2>
+          <div id="characterList" class="character-list"></div>
+          <button id="resetBtn" class="ghost" data-i18n="resetCase">Reset Case</button>
+        </section>
+
+        <section class="panel chat">
+          <div id="chatLog" class="chat-log"></div>
+          <form id="chatForm" class="composer">
+            <input
+              id="messageInput"
+              type="text"
+              placeholder=""
+              autocomplete="off"
+            />
+            <button type="submit" data-i18n="send">Send</button>
+          </form>
+        </section>
+
+        <section class="panel intel">
+          <h2 data-i18n="publicIntel">Public Intel</h2>
+          <div class="intel-block">
+            <h3 data-i18n="accusations">Accusations</h3>
+            <ul id="accusationsList" class="list"></ul>
+          </div>
+          <div class="intel-block">
+            <h3 data-i18n="tensions">Tensions</h3>
+            <ul id="tensionsList" class="list"></ul>
+          </div>
+        </section>
+
+        <section class="panel solution">
+          <h2 data-i18n="solutionTitle">Case Resolution</h2>
+          <p class="solution-hint" data-i18n="solutionHint">
+            Submit your full theory and include every character.
+          </p>
+          <div class="solution-fields">
+            <label class="field">
+              <span data-i18n="solutionKillerLabel">Killer</span>
+              <input id="solutionKiller" type="text" autocomplete="off" />
+            </label>
+            <label class="field">
+              <span data-i18n="solutionMethodLabel">Method</span>
+              <input id="solutionMethod" type="text" autocomplete="off" />
+            </label>
+            <label class="field">
+              <span data-i18n="solutionMotiveLabel">Motive</span>
+              <input id="solutionMotive" type="text" autocomplete="off" />
+            </label>
+          </div>
+          <label class="field">
+            <span data-i18n="solutionTimelineLabel">Timeline summary</span>
+            <textarea id="solutionTimeline" rows="3"></textarea>
+          </label>
+          <label class="field">
+            <span data-i18n="solutionCharacterNotesLabel">Character involvement</span>
+            <textarea id="solutionCharacterNotes" rows="4"></textarea>
+          </label>
+          <div class="solution-actions">
+            <label class="reveal-toggle">
+              <input id="revealToggle" type="checkbox" />
+              <span data-i18n="solutionReveal">Reveal solution (you lose)</span>
+            </label>
+            <button id="checkSolutionBtn" type="button" data-i18n="solutionCheck">Check Solution</button>
+          </div>
+          <div id="solutionResult" class="solution-result"></div>
+        </section>
+      </main>
+    </div>
+
+    <script src="i18n.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
