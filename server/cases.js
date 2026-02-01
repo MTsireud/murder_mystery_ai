@@ -34,7 +34,8 @@ const CASE_LIBRARY = [
       case_time: loc("9:12 PM"),
       case_location: loc("Adelphi Theatre stage door, London"),
       case_briefing: loc(
-        "The actor Edmund Vale was found mortally wounded just outside the stage door moments after curtain call. The troupe and staff are held inside while the street fills with patrons and gossip. You have a short window to question everyone before authorities arrive and the crowd takes over the narrative."
+        "You are the detective called to the Adelphi Theatre just after curtain call. Inside, company manager Gideon has already spoken with critic Milo, while Lydia the understudy has huddled with wardrobe mistress Ada and the dismissed actor Rowan keeps himself apart. The victim Edmund Vale clashed with colleagues and left without an escort, so the story splintered fast. Harriet at the stage door is your closest access to the entry log and the crowd outside is pressing in.",
+        "Είσαι ο ντετέκτιβ που καλείται στο θέατρο Adelphi αμέσως μετά το φινάλε. Μέσα, ο διευθυντής του θιάσου Gideon έχει ήδη μιλήσει με τον κριτικό Milo, ενώ η αναπληρώτρια Lydia έχει κουλουριαστεί με την υπεύθυνη κοστουμιών Ada και ο απολυμένος Rowan κρατιέται μακριά. Το θύμα Edmund Vale συγκρούστηκε με συναδέλφους και έφυγε χωρίς συνοδεία, οπότε η ιστορία διαλύθηκε γρήγορα. Η Harriet στη σκηνική πόρτα είναι η πιο άμεση πρόσβασή σου στο βιβλίο εισόδων και το πλήθος έξω πιέζει."
       ),
       case_briefing_source: "library",
       time_minutes: 0,
@@ -244,7 +245,8 @@ const CASE_LIBRARY = [
       case_time: loc("10:38 PM"),
       case_location: loc("Eltham High Street bus stop, South London"),
       case_briefing: loc(
-        "Jamal Reed was attacked at a bus stop after a brief confrontation. The area is cordoned off, witnesses are rattled, and a tight-knit group of locals is trying to align their stories. You need to sort the overlapping accounts before the night hardens into rumor."
+        "You arrive as the lead investigator at the cordoned bus stop, with Jamal Reed's friend Omar still on the curb. Omar has already compared notes with bus driver Ruth, while Kyle, Dane, and Leah keep close to fixer Nico to align their story. This is a tight neighborhood circle, and loyalties run thicker than facts. Omar is the closest voice to you, but the group is watching who you speak with.",
+        "Φτάνεις ως επικεφαλής ερευνητής στη σφραγισμένη στάση λεωφορείου, με τον φίλο του Jamal Reed, τον Omar, ακόμη στο πεζοδρόμιο. Ο Omar έχει ήδη συγκρίνει σημειώσεις με την οδηγό Ruth, ενώ ο Kyle, ο Dane και η Leah μένουν δίπλα στον Nico για να ευθυγραμμίσουν την ιστορία τους. Είναι μια δεμένη γειτονιά και οι πιστές σχέσεις μετρούν περισσότερο από τα γεγονότα. Ο Omar είναι η πιο κοντινή φωνή σου, αλλά η ομάδα προσέχει με ποιον μιλάς."
       ),
       case_briefing_source: "library",
       time_minutes: 0,
@@ -453,7 +455,8 @@ const CASE_LIBRARY = [
       case_time: loc("7:40 PM"),
       case_location: loc("Glyfada parking lot, Athens"),
       case_briefing: loc(
-        "Nikos Asteri vanished after a meeting by the marina. A close contact is relaying ransom instructions while urging the family to avoid police, and the timeline is already blurred by fear. You need to map the relationships and money trail before the trail goes cold."
+        "You are brought to the Glyfada marina lot as the family's investigator, just as the first ransom instructions ripple through the household. Spiros, the trusted associate, has been speaking for the family with Dr. Elena, while driver Tasos and contractor Katerina quietly compare notes about the vehicles and drop points. The family is torn over involving police, and every relationship has money threaded through it. Mara, the private investigator already on site, is the closest ally you have as the clock starts.",
+        "Σε φέρνουν στο πάρκινγκ της μαρίνας στη Γλυφάδα ως ερευνητή της οικογένειας, την ώρα που οι πρώτες οδηγίες λύτρων διαδίδονται στο σπίτι. Ο Spiros, ο έμπιστος συνεργάτης, μιλά εκ μέρους της οικογένειας με τη Δρ. Elena, ενώ ο οδηγός Tasos και η συνεργάτιδα Katerina συγκρίνουν ήσυχα σημειώσεις για τα οχήματα και τα σημεία παράδοσης. Η οικογένεια διχάζεται για το αν θα εμπλέξει την αστυνομία και κάθε σχέση έχει χρήμα από πίσω. Η Mara, η ιδιωτική ερευνήτρια που είναι ήδη εκεί, είναι η πιο κοντινή σου σύμμαχος καθώς ξεκινά το χρονόμετρο."
       ),
       case_briefing_source: "library",
       time_minutes: 0,
@@ -674,7 +677,8 @@ const CASE_LIBRARY = [
       case_time: loc("3:15 PM"),
       case_location: loc("Istanbul newspaper office steps"),
       case_briefing: loc(
-        "Editor Arda Kir was attacked outside his office after receiving public threats. A suspect was briefly detained, but staff and police disagree on how much was known beforehand. You need to untangle who warned whom and who may have enabled the attack."
+        "You step onto the office steps minutes after Arda Kir is shot, with staff in shock and protest chants rising outside. Senior reporter Leyla has already briefed police liaison Hakan on prior threats, while local contact Seref keeps close to young Cem, insisting he acted alone. The newsroom is a web of warnings, grudges, and missed protection. Leyla is the closest to you, with access to the threat letters and the staff who saw the attack.",
+        "Ανεβαίνεις τα σκαλιά του γραφείου λίγα λεπτά μετά τον πυροβολισμό του Arda Kir, με το προσωπικό σε σοκ και συνθήματα διαμαρτυρίας να δυναμώνουν έξω. Η ανώτερη ρεπόρτερ Leyla έχει ήδη ενημερώσει τον σύνδεσμο της αστυνομίας Hakan για τις προηγούμενες απειλές, ενώ ο τοπικός διαμεσολαβητής Seref μένει δίπλα στον νεαρό Cem, επιμένοντας ότι έδρασε μόνος. Η αίθουσα σύνταξης είναι ένας ιστός προειδοποιήσεων, πικριών και χαμένης προστασίας. Η Leyla είναι η πιο κοντινή σου πηγή, με πρόσβαση στις επιστολές απειλών και στους μάρτυρες."
       ),
       case_briefing_source: "library",
       time_minutes: 0,
@@ -883,7 +887,8 @@ const CASE_LIBRARY = [
       case_time: loc("11:45 PM"),
       case_location: loc("Via del Lago townhouse, Perugia"),
       case_briefing: loc(
-        "Nora Hale was found dead in her shared house after a night out. Roommates are isolated, stories are colliding, and local media is already naming suspects. You need to establish a clean timeline before the narrative locks in."
+        "You arrive at the Via del Lago house as the roommates are separated and the street fills with cameras. Lena and Maya have already compared timelines in whispers, while Paolo has been calling bar owner Patric to nail down when Nora left. The housemates' relationships are strained, and everyone is guarding someone else. Ivo the neighbor is the closest to you with a clear sightline to the courtyard, if you can keep the media at bay.",
+        "Φτάνεις στο σπίτι της Via del Lago ενώ οι συγκάτοικοι έχουν απομονωθεί και ο δρόμος γεμίζει κάμερες. Η Lena και η Maya έχουν ήδη συγκρίνει χρονολόγια ψιθυριστά, ενώ ο Paolo τηλεφωνεί στον ιδιοκτήτη του μπαρ Patric για να κλειδώσει την ώρα που έφυγε η Nora. Οι σχέσεις των συγκατοίκων είναι τεταμένες και ο καθένας προστατεύει κάποιον. Ο γείτονας Ivo είναι η πιο κοντινή σου πηγή με καθαρή οπτική στο προαύλιο, αν καταφέρεις να κρατήσεις τα ΜΜΕ μακριά."
       ),
       case_briefing_source: "library",
       time_minutes: 0,
@@ -1092,7 +1097,8 @@ const CASE_LIBRARY = [
       case_time: loc("1:20 AM"),
       case_location: loc("Maravista Studios backlot, Rio"),
       case_briefing: loc(
-        "Camila Duarte was found dead in the studio parking lot after a late shoot. The cast is being held on set while executives and fans press for answers. You need to sift through rivalries and timeline gaps before the story leaks."
+        "You arrive at Maravista Studios with the cast held on set and the backlot sealed. Showrunner Marcos has already met with PR manager Silvia to shape the story, while Paula stays glued to her co-star Andre. Rivalries and contracts run through every conversation, and the timeline is already being edited. Bea the security guard is your closest access to the gate logs and camera gaps.",
+        "Φτάνεις στα Maravista Studios με το καστ κρατημένο στο πλατό και το πίσω πάρκινγκ σφραγισμένο. Ο showrunner Marcos έχει ήδη συναντηθεί με την υπεύθυνη δημοσίων σχέσεων Silvia για να διαμορφώσουν την ιστορία, ενώ η Paula μένει κολλημένη στον συμπρωταγωνιστή της Andre. Ανταγωνισμοί και συμβόλαια διαπερνούν κάθε κουβέντα και το χρονολόγιο ήδη αλλοιώνεται. Η Bea, η σεκιούριτι, είναι η πιο άμεση πρόσβασή σου στα αρχεία της πύλης και στα κενά των καμερών."
       ),
       case_briefing_source: "library",
       time_minutes: 0,
@@ -1301,7 +1307,8 @@ const CASE_LIBRARY = [
       case_time: loc("10:10 PM"),
       case_location: loc("Outskirts of Santiago de Compostela"),
       case_briefing: loc(
-        "Clara Porto was reported missing and found shortly after on a rural road. Her parents insist on their version of the timeline, yet pharmacy records and witnesses suggest a longer window. You have limited time to interview the inner circle before the press closes in."
+        "You arrive on the rural road where Clara Porto was found, while her parents present a united timeline at the family home. Dr. Vega has already spoken with pharmacist Pilar about recent sedative prescriptions, and Iria, Clara's tutor and friend, is pressing to be heard. The family's public image hangs over every answer. Iria is the closest ally to you if you want Clara's side of the story.",
+        "Φτάνεις στον επαρχιακό δρόμο όπου βρέθηκε η Clara Porto, ενώ οι γονείς της παρουσιάζουν ενιαίο χρονολόγιο στο σπίτι. Η Δρ. Vega έχει ήδη μιλήσει με τη φαρμακοποιό Pilar για πρόσφατες συνταγές κατασταλτικών, και η Iria, δασκάλα και φίλη της Clara, πιέζει να ακουστεί. Η δημόσια εικόνα της οικογένειας βαραίνει κάθε απάντηση. Η Iria είναι η πιο κοντινή σου σύμμαχος αν θέλεις την πλευρά της Clara."
       ),
       case_briefing_source: "library",
       time_minutes: 0,
@@ -1510,7 +1517,8 @@ const CASE_LIBRARY = [
       case_time: loc("11:25 PM"),
       case_location: loc("Kassel district terrace"),
       case_briefing: loc(
-        "Lukas Becker was shot on his terrace late at night after months of threats. Investigators are piecing together a weapon trail and a long list of warnings. You need to trace who may have enabled the attack."
+        "You arrive at the terrace where Lukas Becker was shot, with investigators already cataloging months of threats. Aide Anja has been briefing security officer Torben, while Markus and Jens trade messages to keep their names out of the record. The victim's routine and the weapon trail tie this to a broader network. Anja is the closest to you with the threat archive, while neighbor Sina can place faces on the side road.",
+        "Φτάνεις στη βεράντα όπου πυροβολήθηκε ο Lukas Becker, με τους ερευνητές να καταγράφουν ήδη μήνες απειλών. Η βοηθός Anja ενημερώνει τον υπεύθυνο ασφαλείας Torben, ενώ ο Markus και ο Jens ανταλλάσσουν μηνύματα για να κρατήσουν τα ονόματά τους εκτός φακέλου. Η ρουτίνα του θύματος και η διαδρομή του όπλου συνδέουν την υπόθεση με ευρύτερο δίκτυο. Η Anja είναι η πιο κοντινή σου πηγή με το αρχείο απειλών, ενώ η γειτόνισσα Sina μπορεί να τοποθετήσει πρόσωπα στον παράδρομο."
       ),
       case_briefing_source: "library",
       time_minutes: 0,
@@ -1719,7 +1727,8 @@ const CASE_LIBRARY = [
       case_time: loc("8:35 PM"),
       case_location: loc("Uppsala family apartment"),
       case_briefing: loc(
-        "Lina Sahar was killed at her family's apartment after returning for a discussion. Authorities were aware of prior tension, and neighbors reported shouting before the shot. You need to chart the family dynamics and the final minutes before the call."
+        "You arrive at the Sahar apartment after Lina's fatal confrontation, with family members pulled into separate rooms. Mira has already spoken with social worker Eva about prior warnings, while Samir and cousin Nadia are comparing what they heard in the hallway. The family relationship is the center of the case, and everyone is protecting someone else. Eva is the closest ally with the documented history, and neighbor Oskar can anchor the timeline.",
+        "Φτάνεις στο διαμέρισμα των Sahar μετά τη μοιραία σύγκρουση της Lina, με τα μέλη της οικογένειας σε ξεχωριστά δωμάτια. Η Mira έχει ήδη μιλήσει με την κοινωνική λειτουργό Eva για τις προηγούμενες προειδοποιήσεις, ενώ ο Samir και η ξαδέλφη Nadia συγκρίνουν όσα άκουσαν στο διάδρομο. Οι οικογενειακές σχέσεις είναι ο πυρήνας της υπόθεσης και όλοι προστατεύουν κάποιον. Η Eva είναι η πιο κοντινή σου σύμμαχος με τα καταγεγραμμένα στοιχεία, και ο γείτονας Oskar μπορεί να αγκυρώσει το χρονολόγιο."
       ),
       case_briefing_source: "library",
       time_minutes: 0,
@@ -1928,7 +1937,8 @@ const CASE_LIBRARY = [
       case_time: loc("7:20 PM"),
       case_location: loc("Kyoto riverside condo"),
       case_briefing: loc(
-        "Kenji Watan died suddenly after an evening with his new partner. Records show similar beneficiaries in recent years, and investigators suspect a broader pattern. You need to trace the relationships and confirm whether this was a single, deliberate act."
+        "You arrive at Kenji Watan's riverside condo just as the sudden death is being classified. Matchmaker Chisa is keeping close to colleague Miki, while Miki has already compared notes with insurance agent Koji about unusual beneficiaries and Emi has been pressing Dr. Hayashi for answers. The relationships look recent but the paperwork points to a longer pattern. Emi is the closest to you, and the medical examiner can steady the facts.",
+        "Φτάνεις στο παραποτάμιο διαμέρισμα του Kenji Watan τη στιγμή που ο αιφνίδιος θάνατος καταγράφεται επίσημα. Η προξενήτρα Chisa μένει δίπλα στη συνάδελφο Miki, ενώ η Miki έχει ήδη συγκρίνει σημειώσεις με τον ασφαλιστικό πράκτορα Koji για ασυνήθιστους δικαιούχους και η Emi πιέζει τον Δρ. Hayashi για απαντήσεις. Οι σχέσεις φαίνονται πρόσφατες, αλλά τα έγγραφα δείχνουν μακρύτερο μοτίβο. Η Emi είναι η πιο κοντινή σου πηγή και ο ιατροδικαστής μπορεί να σταθεροποιήσει τα γεγονότα."
       ),
       case_briefing_source: "library",
       time_minutes: 0,

@@ -3,7 +3,6 @@ const chatLogEl = document.getElementById("chatLog");
 const messageInput = document.getElementById("messageInput");
 const chatForm = document.getElementById("chatForm");
 const timeElapsedEl = document.getElementById("timeElapsed");
-const evidenceListEl = document.getElementById("evidenceList");
 const accusationsListEl = document.getElementById("accusationsList");
 const tensionsListEl = document.getElementById("tensionsList");
 const resetBtn = document.getElementById("resetBtn");
@@ -188,13 +187,6 @@ function renderPublicState() {
     appState.language,
     "minutes"
   )}`;
-
-  evidenceListEl.innerHTML = "";
-  appState.publicState.discovered_evidence.forEach((item) => {
-    const li = document.createElement("li");
-    li.textContent = item;
-    evidenceListEl.appendChild(li);
-  });
 
   accusationsListEl.innerHTML = "";
   appState.publicState.public_accusations.forEach((item) => {
