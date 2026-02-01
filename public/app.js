@@ -643,7 +643,7 @@ function appendCaseBriefing({ force = false } = {}) {
   if (!force && chatLogEl.childElementCount > 0) return;
   const text = buildCaseBriefingText();
   if (!text) return;
-  appendMessage(text, "system");
+  appendWatsonMessage(text, "watson");
 }
 
 function renderCaseHeader() {
@@ -662,8 +662,15 @@ function renderCaseHeader() {
 function renderCaseIntro() {
   const introEl = document.getElementById("caseIntro");
   if (!introEl || !appState.publicState) return;
-  const lines = appState.publicState.case_intro?.[appState.language] || [];
-  introEl.innerHTML = lines.length ? lines.map((line) => `<p>${line}</p>`).join("") : "";
+  const sections = appState.publicState.case_intro?.[appState.language] || [];
+  introEl.innerHTML = sections
+    .map(
+      ({ title, lines }) =>
+        `<div class="intro-section"><h4>${title || ""}</h4>${(lines || [])
+          .map((line) => `<p>${line}</p>`)
+          .join("")}</div>`
+    )
+    .join("");
 }
 
 function renderCaseChatLog({ forceBriefing = false } = {}) {

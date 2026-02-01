@@ -40,6 +40,14 @@ const CASE_LIBRARY = [
         "Είσαι ο ντετέκτιβ που καλείται στο θέατρο Adelphi αμέσως μετά το φινάλε. Μέσα, ο διευθυντής του θιάσου Gideon έχει ήδη μιλήσει με τον κριτικό Milo, ενώ η αναπληρώτρια Lydia έχει κουλουριαστεί με την υπεύθυνη κοστουμιών Ada και ο απολυμένος Rowan κρατιέται μακριά. Το θύμα Edmund Vale συγκρούστηκε με συναδέλφους και έφυγε χωρίς συνοδεία, οπότε η ιστορία διαλύθηκε γρήγορα. Η Harriet στη σκηνική πόρτα είναι η πιο άμεση πρόσβασή σου στο βιβλίο εισόδων και το πλήθος έξω πιέζει."
       ),
       case_briefing_source: "library",
+      case_intro_reason: loc(
+        "You’re the family investigator called after the first ransom instructions landed. Keep it quiet and keep the pressure low.",
+        "Είσαι ο ερευνητής της οικογένειας που κλήθηκε μετά την πρώτη οδηγία λύτρων. Κράτα το ήσυχο και πίεσε διακριτικά."
+      ),
+      social_notes: loc(
+        "Nikos is well-liked, keeps a tight circle, and is protective of Elena and the crew. Tension about public police involvement is rising.",
+        "Ο Νίκος είναι αγαπητός, διατηρεί έναν κλειστό κύκλο και προστατεύει την Έλενα και το συνεργείο. Η ένταση για το αν θα μπει η αστυνομία μεγαλώνει."
+      ),
       initial_callers: [loc("Dr. Elena Markos", "Δρ. Έλενα Μάρκος")],
       time_minutes: 0,
       discovered_evidence: [loc("bloodied playbill")],
@@ -714,11 +722,35 @@ const CASE_LIBRARY = [
           )
         },
         relationship_to_victim: loc("private investigator hired by Elena", "ιδιωτική ερευνήτρια που προσλήφθηκε από την Έλενα"),
+        relationship_summary: loc(
+          "Mara was hired by Elena and is protective of the family; she feeds you notes from the shadows.",
+          "Η Mara προσλήφθηκε από την Έλενα και προστατεύει την οικογένεια· σου δίνει σημειώσεις από τη σκιά."
+        ),
         relationship_to_victim: loc("courier carrying the family’s messages", "διανομέας που μεταφέρει μηνύματα της οικογένειας"),
+        relationship_summary: loc(
+          "Yannis handles burner phones and delivery runs; he’s nervous but loyal when money flows.",
+          "Ο Yannis κουβαλά τα burner και τις διανομές· είναι νευρικός αλλά πιστός όταν κυλάει το χρήμα."
+        ),
         relationship_to_victim: loc("logistics contractor tied to the family", "εργολάβος logistics συνδεδεμένη με την οικογένεια"),
+        relationship_summary: loc(
+          "Katerina keeps the marina contracts running and is widely trusted for discreet moves; she knows how to make cash vanish.",
+          "Η Katerina κρατά τις συμφωνίες της μαρίνας σε λειτουργία και εμπιστεύονται την παρασκηνιακή της δουλειά· ξέρει πώς να εξαφανίζει τα μετρητά."
+        ),
         relationship_to_victim: loc("family driver and escort", "οικογενειακός οδηγός και συνοδός"),
+        relationship_summary: loc(
+          "Tasos is the calm driver who escorts the family and rarely questions orders; with pressure rising, he keeps his head down.",
+          "Ο Τάσος είναι ο ήρεμος οδηγός που συνοδεύει την οικογένεια και σπάνια αμφισβητεί εντολές· με την πίεση να ανεβαίνει, κρατάει χαμηλούς τόνους."
+        ),
         relationship_to_victim: loc("adoptive mother and protector", "θετή μητέρα και προστάτιδα"),
+        relationship_summary: loc(
+          "Elena is Nikos’s adoptive mother and spouse; she fights to keep the family safe and mediates between Spiros and the board.",
+          "Η Έλενα είναι θετή μητέρα και σύζυγος του Νίκου· παλεύει για την ασφάλεια της οικογένειας και μεσολαβεί ανάμεσα στον Spiros και το διοικητικό συμβούλιο."
+        ),
         relationship_to_victim: loc("family associate and logistics lead", "συνεργάτης της οικογένειας και υπεύθυνος logistics"),
+        relationship_summary: loc(
+          "He manages Nikos’s logistics and keeps the family choices steady while handling sensitive contacts.",
+          "Διευθύνει τα logistics του Νίκου και διατηρεί τη σταθερότητα της οικογένειας ενώ χειρίζεται ευαίσθητες επαφές."
+        ),
         relationships: [
           {
             with: "elena",
