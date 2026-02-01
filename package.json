@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "node server/index.js"
+    "dev": "node server/index.js",
+    "generate:athens-portraits": "node scripts/generate_athens_portraits.mjs"
   },
   "dependencies": {
     "dotenv": "^16.4.5",

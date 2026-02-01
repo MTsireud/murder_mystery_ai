@@ -466,6 +466,8 @@ const CASE_LIBRARY = [
         id: "spiros",
         name: "Spiros Demos",
         role: loc("Family Associate"),
+        portrait_prompt: "Cinematic head-and-shoulders portrait of a calm, authoritative Greek man in his late 60s, salt-and-pepper hair neatly combed, trimmed beard, wearing a tailored navy blazer and open-collar white shirt. Subtle marina evening light, shallow depth of field, 35mm film look, neutral background, serious expression.",
+        portrait_path: "/images/athens-2012/spiros.png",
         psycho: [
           loc("calm"),
           loc("manipulative"),
@@ -494,6 +496,8 @@ const CASE_LIBRARY = [
         id: "elena",
         name: "Dr. Elena Markos",
         role: loc("Adoptive Mother"),
+        portrait_prompt: "Cinematic head-and-shoulders portrait of a composed Greek woman in her early 50s, dark hair in a low bun, minimal jewelry, wearing a crisp light blouse and tailored coat. Soft clinic lighting, 35mm film look, neutral background, controlled but worried expression.",
+        portrait_path: "/images/athens-2012/elena.png",
         psycho: [
           loc("composed"),
           loc("guarded"),
@@ -522,6 +526,8 @@ const CASE_LIBRARY = [
         id: "tasos",
         name: "Tasos Veris",
         role: loc("Family Driver"),
+        portrait_prompt: "Cinematic head-and-shoulders portrait of a nervous Greek man in his late 30s, short dark hair, light stubble, wearing a practical dark jacket and plain shirt. Evening street lighting, 35mm film look, neutral background, apologetic gaze.",
+        portrait_path: "/images/athens-2012/tasos.png",
         psycho: [
           loc("nervous"),
           loc("loyal"),
@@ -550,6 +556,8 @@ const CASE_LIBRARY = [
         id: "katerina",
         name: "Katerina Voss",
         role: loc("Logistics Contractor"),
+        portrait_prompt: "Cinematic head-and-shoulders portrait of a sharp-eyed woman in her early 40s, short dark hair, no-nonsense style, wearing a charcoal blazer over a dark top. Low, moody lighting, 35mm film look, neutral background, steady and guarded expression.",
+        portrait_path: "/images/athens-2012/katerina.png",
         psycho: [
           loc("hard-eyed"),
           loc("impatient"),
@@ -578,6 +586,8 @@ const CASE_LIBRARY = [
         id: "yannis",
         name: "Yannis Petros",
         role: loc("Ransom Courier"),
+        portrait_prompt: "Cinematic head-and-shoulders portrait of a restless Greek man in his late 20s, scruffy stubble, slightly messy hair, wearing a zip hoodie under a worn jacket. Nighttime urban lighting, 35mm film look, neutral background, wary expression.",
+        portrait_path: "/images/athens-2012/yannis.png",
         psycho: [
           loc("nervous"),
           loc("fast-talking"),
@@ -606,6 +616,8 @@ const CASE_LIBRARY = [
         id: "mara",
         name: "Mara Zoi",
         role: loc("Private Investigator"),
+        portrait_prompt: "Cinematic head-and-shoulders portrait of a focused woman in her mid 30s, practical short hair, wearing a simple leather jacket over a dark shirt. Cool interior lighting, 35mm film look, neutral background, attentive and skeptical expression.",
+        portrait_path: "/images/athens-2012/mara.png",
         psycho: [
           loc("focused"),
           loc("skeptical"),

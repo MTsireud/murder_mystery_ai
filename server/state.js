@@ -47,7 +47,8 @@ function buildPublicView(state, language, sessionId) {
     characters: state.characters.map((c) => ({
       id: c.id,
       name: c.name,
-      role: getLocalized(c.role, lang)
+      role: getLocalized(c.role, lang),
+      portrait: c.portrait_path || ""
     }))
   };
 }

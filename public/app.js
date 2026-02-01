@@ -141,6 +141,22 @@ function renderCharacters() {
       card.classList.add("active");
     }
 
+    if (character.portrait) {
+      const portrait = document.createElement("img");
+      portrait.className = "character-avatar";
+      portrait.src = character.portrait;
+      portrait.alt = character.name;
+      portrait.loading = "lazy";
+      portrait.addEventListener("error", () => {
+        portrait.remove();
+        card.classList.add("no-avatar");
+      });
+      card.appendChild(portrait);
+    }
+
+    const textWrap = document.createElement("div");
+    textWrap.className = "character-meta";
+
     const name = document.createElement("div");
     name.className = "character-name";
     name.textContent = character.name;
@@ -149,8 +165,9 @@ function renderCharacters() {
     role.className = "character-role";
     role.textContent = character.role;
 
-    card.appendChild(name);
-    card.appendChild(role);
+    textWrap.appendChild(name);
+    textWrap.appendChild(role);
+    card.appendChild(textWrap);
     card.addEventListener("click", () => {
       appState.activeCharacterId = character.id;
       storeActiveCharacter(appState.caseId, character.id);
