@@ -1,13 +1,17 @@
-import { getOpenAIClient } from "./openai.js";
+import { createResponse, getOpenAIClient } from "./openai.js";
 import { getLocalized, normalizeLanguage } from "./i18n.js";
 import { loadPrompt } from "./prompts.js";
 
 const CHECKER_MODEL =
   process.env.OPENAI_MODEL_CHECKER ||
   process.env.OPENAI_MODEL_CRITICAL ||
-  "gpt-4.1";
+  "gpt-5";
 const MAX_OUTPUT_TOKENS = Number(process.env.OPENAI_MAX_OUTPUT_TOKENS || 240);
 const TEMPERATURE = Number(process.env.OPENAI_TEMPERATURE || 0.2);
+
+function isGpt5Model(model) {
+  return String(model || "").toLowerCase().startsWith("gpt-5");
+}
 
 const CHECKER_SCHEMA = {
   type: "object",
@@ -73,15 +77,23 @@ const CHECKER_SCHEMA = {
 
 function extractOutputText(response) {
   if (!response) return "";
-  if (typeof response.output_text === "string") return response.output_text;
+  if (typeof response.output_text === "string" && response.output_text.trim()) {
+    return response.output_text;
+  }
   const outputs = response.output || [];
   for (const item of outputs) {
     const content = item?.content || [];
     for (const entry of content) {
-      if (entry?.type === "output_text" && typeof entry.text === "string") {
+      if (typeof entry?.text === "string" && entry.text.trim()) {
         return entry.text;
       }
+      if (entry?.type === "output_json" && entry.json && typeof entry.json === "object") {
+        return JSON.stringify(entry.json);
+      }
     }
+  }
+  if (response.output_json && typeof response.output_json === "object") {
+    return JSON.stringify(response.output_json);
   }
   return "";
 }
@@ -165,7 +177,7 @@ export async function checkSolution({ state, solution, reveal, language }) {
 
   let response;
   try {
-    response = await client.responses.create({
+    const responseParams = {
       model: CHECKER_MODEL,
       input: [
         { role: "system", content: prompt },
@@ -181,7 +193,13 @@ export async function checkSolution({ state, solution, reveal, language }) {
           schema: CHECKER_SCHEMA
         }
       }
-    });
+    };
+    if (isGpt5Model(CHECKER_MODEL)) {
+      responseParams.reasoning = { effort: "minimal" };
+      responseParams.text = { ...responseParams.text, verbosity: "low" };
+    }
+
+    response = await createResponse(client, responseParams);
   } catch {
     return fallbackResult(revealRequested);
   }

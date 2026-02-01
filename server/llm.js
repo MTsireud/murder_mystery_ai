@@ -1,12 +1,16 @@
 import { getLocalized, normalizeLanguage, t } from "./i18n.js";
 import { normalizeMemory, summarizeAffect } from "./memory.js";
-import { getOpenAIClient } from "./openai.js";
+import { createResponse, getOpenAIClient } from "./openai.js";
 
-const ROUTINE_MODEL = process.env.OPENAI_MODEL_ROUTINE || "gpt-4.1-mini";
-const CRITICAL_MODEL = process.env.OPENAI_MODEL_CRITICAL || "gpt-4.1";
+const ROUTINE_MODEL = process.env.OPENAI_MODEL_ROUTINE || "gpt-5";
+const CRITICAL_MODEL = process.env.OPENAI_MODEL_CRITICAL || "gpt-5";
 const MAX_OUTPUT_TOKENS = Number(process.env.OPENAI_MAX_OUTPUT_TOKENS || 220);
 const TEMPERATURE = Number(process.env.OPENAI_TEMPERATURE || 0.7);
 const USE_MOCK = String(process.env.OPENAI_USE_MOCK || "false").toLowerCase() === "true";
+
+function isGpt5Model(model) {
+  return String(model || "").toLowerCase().startsWith("gpt-5");
+}
 
 const KEYWORDS = {
   en: {
@@ -287,7 +291,7 @@ function buildCharacterPrompt({ character, language, publicState, allCharacters,
   return [
     `You are ${character.name}, the ${role}.`,
     `Respond in ${languageName}.`,
-    "Stay in character and keep answers concise (1-4 sentences).",
+    "Stay in character and keep answers concise (1-3 sentences, under 240 characters).",
     "You can lie if your lie strategy tags support it, but do not invent verified evidence.",
     "If you do not know something, say you do not know.",
     "Never mention hidden truth unless it is in your private facts.",
@@ -359,17 +363,74 @@ function buildCharacterPrompt({ character, language, publicState, allCharacters,
 
 function extractOutputText(response) {
   if (!response) return "";
-  if (typeof response.output_text === "string") return response.output_text;
+  if (typeof response.output_text === "string" && response.output_text.trim()) {
+    return response.output_text;
+  }
   const outputs = response.output || [];
   for (const item of outputs) {
     const content = item?.content || [];
     for (const entry of content) {
-      if (entry?.type === "output_text" && typeof entry.text === "string") {
+      if (typeof entry?.text === "string" && entry.text.trim()) {
         return entry.text;
+      }
+      if (entry?.type === "output_json" && entry.json && typeof entry.json === "object") {
+        return JSON.stringify(entry.json);
       }
     }
   }
+  if (response.output_json && typeof response.output_json === "object") {
+    return JSON.stringify(response.output_json);
+  }
   return "";
+}
+
+function extractDialogueFromJsonLike(text) {
+  if (!text || typeof text !== "string") return "";
+  const key = "\"dialogue\"";
+  const start = text.indexOf(key);
+  if (start === -1) return "";
+  const colon = text.indexOf(":", start + key.length);
+  if (colon === -1) return "";
+  let i = colon + 1;
+  while (i < text.length && /\s/.test(text[i])) i += 1;
+  if (text[i] !== "\"") return "";
+  i += 1;
+  let result = "";
+  let escaped = false;
+  for (; i < text.length; i += 1) {
+    const ch = text[i];
+    if (escaped) {
+      switch (ch) {
+        case "n":
+          result += "\n";
+          break;
+        case "t":
+          result += "\t";
+          break;
+        case "r":
+          result += "\r";
+          break;
+        case "\"":
+          result += "\"";
+          break;
+        case "\\":
+          result += "\\";
+          break;
+        default:
+          result += ch;
+          break;
+      }
+      escaped = false;
+      continue;
+    }
+    if (ch === "\\") {
+      escaped = true;
+      continue;
+    }
+    if (ch === "\"") break;
+    result += ch;
+  }
+  return result;
 }
 
 function sanitizeResponse(parsed) {
@@ -503,7 +564,7 @@ export async function generateCharacterResponse({
     answerFrame
   });
 
-  const response = await client.responses.create({
+  const responseParams = {
     model,
     input: [
       {
@@ -525,7 +586,14 @@ export async function generateCharacterResponse({
         schema: RESPONSE_SCHEMA
       }
     }
-  });
+  };
+  if (isGpt5Model(model)) {
+    responseParams.reasoning = { effort: "minimal" };
+    responseParams.text = { ...responseParams.text, verbosity: "low" };
+    responseParams.max_output_tokens = Math.max(MAX_OUTPUT_TOKENS, 360);
+  }
+
+  const response = await createResponse(client, responseParams);
 
   const outputText = extractOutputText(response);
   let parsed = null;
@@ -533,7 +601,12 @@ export async function generateCharacterResponse({
     try {
       parsed = JSON.parse(outputText);
     } catch {
-      parsed = null;
+      const extracted = extractDialogueFromJsonLike(outputText);
+      parsed = {
+        dialogue: extracted || outputText.trim(),
+        claims: [],
+        intent: "comply"
+      };
     }
   }
   if (!parsed) {
@@ -742,7 +815,7 @@ export async function generateWatsonResponse({
     settings: normalizedSettings
   });
   try {
-    const response = await client.responses.create({
+    const responseParams = {
       model: ROUTINE_MODEL,
       input: [
         { role: "system", content: prompt },
@@ -751,7 +824,13 @@ export async function generateWatsonResponse({
       ],
       temperature,
       max_output_tokens: MAX_OUTPUT_TOKENS
-    });
+    };
+    if (isGpt5Model(ROUTINE_MODEL)) {
+      responseParams.reasoning = { effort: "minimal" };
+      responseParams.text = { verbosity: "low" };
+    }
+
+    const response = await createResponse(client, responseParams);
 
     const outputText = extractOutputText(response);
     const dialogue = outputText ? outputText.trim() : "";
