@@ -659,6 +659,13 @@ function renderCaseHeader() {
   document.title = title;
 }
 
+function renderCaseIntro() {
+  const introEl = document.getElementById("caseIntro");
+  if (!introEl || !appState.publicState) return;
+  const lines = appState.publicState.case_intro?.[appState.language] || [];
+  introEl.innerHTML = lines.length ? lines.map((line) => `<p>${line}</p>`).join("") : "";
+}
+
 function renderCaseChatLog({ forceBriefing = false } = {}) {
   const events = appState.clientState?.events || [];
   chatLogEl.innerHTML = "";
@@ -1369,6 +1376,7 @@ function applyState(data, { clearChat = false, rehydrateChat = false } = {}) {
   renderCharacters();
   renderPublicState();
   renderCaseHeader();
+  renderCaseIntro();
   if (rehydrateChat) {
     renderChatLog({ forceBriefing: true });
   } else if (clearChat) {

@@ -67,6 +67,14 @@ h1 {
   max-width: 560px;
 }
 
+.case-intro {
+  margin-top: 12px;
+  max-width: 560px;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: rgba(31, 26, 20, 0.85);
+}
+
 .status {
   display: flex;
   gap: 16px;
