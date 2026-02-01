@@ -5,6 +5,8 @@ const DEFAULT_AFFECT = {
   fear: 0
 };
 
+const DEFAULT_HEAT = 0;
+
 const MAX_MEMORY_ITEMS = Number(process.env.MEMORY_MAX_ITEMS || 12);
 
 function clampNumber(value, min, max) {
@@ -45,6 +47,7 @@ function normalizeList(list) {
 export function createDefaultMemory() {
   return {
     affect: normalizeAffect(),
+    heat: DEFAULT_HEAT,
     commitments: [],
     self_claims: [],
     heard_claims: [],
@@ -56,6 +59,11 @@ export function normalizeMemory(input = {}) {
   const memory = input && typeof input === "object" ? input : {};
   return {
     affect: normalizeAffect(memory.affect || {}),
+    heat: clampNumber(
+      Number.isFinite(memory.heat) ? memory.heat : DEFAULT_HEAT,
+      0,
+      100
+    ),
     commitments: normalizeList(memory.commitments),
     self_claims: normalizeList(memory.self_claims),
     heard_claims: normalizeList(memory.heard_claims),
@@ -161,13 +169,43 @@ export function updateAffect(affect, message) {
   return normalizeAffect(next);
 }
 
-export function summarizeAffect(affect) {
+export function updateHeat(currentHeat, { intent, message } = {}) {
+  let heat = Number.isFinite(currentHeat) ? currentHeat : DEFAULT_HEAT;
+  const lower = String(message || "").toLowerCase();
+  const pressureSignals = [
+    "police",
+    "arrest",
+    "charges",
+    "suspect",
+    "warrant",
+    "you have to answer",
+    "answer now",
+    "αστυνομ",
+    "σύλληψη",
+    "κατηγορ",
+    "ύποπτ",
+    "ένταλμα",
+    "πρέπει να απαντήσεις"
+  ];
+  if (intent === "deflect" || intent === "stall") {
+    heat += 8;
+  } else if (intent === "reveal" || intent === "comply") {
+    heat -= 4;
+  }
+  if (pressureSignals.some((signal) => lower.includes(signal))) {
+    heat += 4;
+  }
+  return clampNumber(heat, 0, 100);
+}
+
+export function summarizeAffect(affect, heat = DEFAULT_HEAT) {
   const safe = normalizeAffect(affect || {});
   const notes = [];
   if (safe.irritation >= 60) notes.push("irritated by the detective");
   if (safe.rapport >= 65) notes.push("open to cooperation");
   if (safe.trust <= 35) notes.push("distrustful");
   if (safe.fear >= 60) notes.push("pressured or guarded");
+  if (heat >= 60) notes.push("feels under scrutiny");
   if (notes.length === 0) return "neutral, cautious";
   return notes.join(", ");
 }

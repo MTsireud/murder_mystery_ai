@@ -460,6 +460,217 @@ const CASE_LIBRARY = [
         "Σε φέρνουν στο πάρκινγκ της μαρίνας στη Γλυφάδα ως ερευνητή της οικογένειας, την ώρα που οι πρώτες οδηγίες λύτρων διαδίδονται στο σπίτι. Ο Spiros, ο έμπιστος συνεργάτης, μιλά εκ μέρους της οικογένειας με τη Δρ. Elena, ενώ ο οδηγός Tasos και η συνεργάτιδα Katerina συγκρίνουν ήσυχα σημειώσεις για τα οχήματα και τα σημεία παράδοσης. Η οικογένεια διχάζεται για το αν θα εμπλέξει την αστυνομία και κάθε σχέση έχει χρήμα από πίσω. Η Mara, η ιδιωτική ερευνήτρια που είναι ήδη εκεί, είναι η πιο κοντινή σου σύμμαχος καθώς ξεκινά το χρονόμετρο."
       ),
       case_briefing_source: "library",
+      police_call_time: loc("around 8:35 PM", "περίπου στις 20:35"),
+      victim_dossier: {
+        bio: loc(
+          "Nikos Asteri, early 30s shipping heir, known for routine seaside meetings and a tight inner circle.",
+          "Ο Νίκος Αστέρη, περίπου 30 ετών, κληρονόμος στη ναυτιλία, γνωστός για τις σταθερές συναντήσεις στην παραλία και τον κλειστό κύκλο του."
+        ),
+        last_seen: loc(
+          "Left Alkyon Seaside Cafe at 7:20 PM and was expected at the marina shortly after.",
+          "Έφυγε από το παραθαλάσσιο καφέ Αλκυών στις 19:20 και αναμενόταν λίγο μετά στη μαρίνα."
+        ),
+        relationship_summary: loc(
+          "Trusted Spiros to manage family logistics, relied on Elena for caution, kept Tasos and Katerina at arm's length.",
+          "Εμπιστευόταν τον Spiros για τις οικογενειακές υποθέσεις, βασιζόταν στην Elena για ψυχραιμία, κρατούσε τον Tasos και την Katerina σε απόσταση."
+        )
+      },
+      case_locations: [
+        {
+          id: "glyfada-marina-lot",
+          name: loc("Glyfada Marina Parking Lot", "Πάρκινγκ Μαρίνας Γλυφάδας"),
+          descriptor: loc(
+            "Lot by Gate 2 facing the fuel dock.",
+            "Πάρκινγκ δίπλα στην Πύλη 2, απέναντι από την προβλήτα καυσίμων."
+          ),
+          hint: loc("Main entrance CCTV faces the exit lane.", "Η κύρια κάμερα κοιτά την έξοδο.")
+        },
+        {
+          id: "glyfada-marina-office",
+          name: loc("Glyfada Marina Office A2", "Γραφείο Μαρίνας Γλυφάδας A2"),
+          descriptor: loc(
+            "Admin office above Gate 1.",
+            "Διοικητικό γραφείο πάνω από την Πύλη 1."
+          ),
+          hint: loc("Access logs are stored here.", "Τα αρχεία εισόδου φυλάσσονται εδώ.")
+        },
+        {
+          id: "alkyon-cafe",
+          name: loc("Alkyon Seaside Cafe", "Παραθαλάσσιο καφέ Αλκυών"),
+          descriptor: loc(
+            "Victim's last stop on the promenade.",
+            "Το τελευταίο σημείο του θύματος στον πεζόδρομο."
+          ),
+          hint: loc("Staff keep a handwritten reservations log.", "Το προσωπικό κρατά χειρόγραφο βιβλίο κρατήσεων.")
+        },
+        {
+          id: "asteri-villa",
+          name: loc("Asteri Family Villa", "Έπαυλη οικογένειας Αστέρη"),
+          descriptor: loc(
+            "Hillside residence with a family office.",
+            "Έπαυλη στην πλαγιά με οικογενειακό γραφείο."
+          ),
+          hint: loc("Private line phones are in the study.", "Τα ιδιωτικά τηλέφωνα είναι στο γραφείο.")
+        },
+        {
+          id: "voss-warehouse",
+          name: loc("Voss Logistics Warehouse", "Αποθήκη Voss Logistics"),
+          descriptor: loc(
+            "Light industrial unit near the ring road.",
+            "Βιομηχανική μονάδα κοντά στην περιφερειακή."
+          ),
+          hint: loc("Loading bay cameras cover the rear door.", "Οι κάμερες καλύπτουν την πίσω πόρτα.")
+        },
+        {
+          id: "seaside-drop",
+          name: loc("Seaside Road Drop Point", "Σημείο παράδοσης στην παραλιακή"),
+          descriptor: loc(
+            "Blind bend on the coastal road.",
+            "Στροφή χωρίς ορατότητα στην παραλιακή."
+          ),
+          hint: loc("Phone signal is weak on the curve.", "Το σήμα τηλεφώνου είναι χαμηλό στη στροφή.")
+        },
+        {
+          id: "marina-kiosk",
+          name: loc("Marina Kiosk Cafe", "Καντίνα μαρίνας"),
+          descriptor: loc(
+            "Small coffee stand by the lot entrance.",
+            "Μικρή καντίνα στην είσοδο του πάρκινγκ."
+          ),
+          hint: loc("Regulars recognize frequent faces.", "Οι θαμώνες αναγνωρίζουν τους συχνούς πελάτες.")
+        },
+        {
+          id: "markos-clinic",
+          name: loc("Markos Clinic", "Κλινική Μάρκος"),
+          descriptor: loc(
+            "Private clinic in Glyfada.",
+            "Ιδιωτική κλινική στη Γλυφάδα."
+          ),
+          hint: loc("Appointment logs show visitor times.", "Τα ραντεβού δείχνουν ώρες επίσκεψης.")
+        }
+      ],
+      relationship_history: [
+        {
+          id: "rh-2004-advisor",
+          time: loc("2004", "2004"),
+          event: loc(
+            "Spiros begins advising the Asteri family on shipping contracts.",
+            "Ο Spiros αρχίζει να συμβουλεύει την οικογένεια Αστέρη για συμβόλαια ναυτιλίας."
+          ),
+          location_id: "asteri-villa",
+          participants: ["spiros", "elena"]
+        },
+        {
+          id: "rh-2006-adoption",
+          time: loc("2006", "2006"),
+          event: loc(
+            "Elena finalizes Nikos Asteri's adoption with Spiros handling the paperwork.",
+            "Η Elena ολοκληρώνει την υιοθεσία του Νίκου Αστέρη με τον Spiros να χειρίζεται τα έγγραφα."
+          ),
+          location_id: "asteri-villa",
+          participants: ["spiros", "elena"]
+        },
+        {
+          id: "rh-2009-driver",
+          time: loc("2009", "2009"),
+          event: loc(
+            "Spiros hires Tasos as the family's driver.",
+            "Ο Spiros προσλαμβάνει τον Tasos ως οδηγό της οικογένειας."
+          ),
+          location_id: "asteri-villa",
+          participants: ["spiros", "tasos"]
+        },
+        {
+          id: "rh-2014-marina",
+          time: loc("2014", "2014"),
+          event: loc(
+            "Katerina's firm wins a marina logistics contract and meets Spiros at the marina office.",
+            "Η εταιρεία της Katerina κερδίζει συμβόλαιο στη μαρίνα και συναντά τον Spiros στο γραφείο."
+          ),
+          location_id: "glyfada-marina-office",
+          participants: ["katerina", "spiros"]
+        },
+        {
+          id: "rh-2018-courier",
+          time: loc("2018", "2018"),
+          event: loc(
+            "Yannis starts courier runs for Katerina's logistics work.",
+            "Ο Yannis ξεκινά διαδρομές courier για τις δουλειές της Katerina."
+          ),
+          location_id: "voss-warehouse",
+          participants: ["yannis", "katerina"]
+        },
+        {
+          id: "rh-2021-mara",
+          time: loc("2021", "2021"),
+          event: loc(
+            "Mara investigates a minor theft for Elena and earns cautious trust.",
+            "Η Mara ερευνά μια μικρή κλοπή για την Elena και κερδίζει συγκρατημένη εμπιστοσύνη."
+          ),
+          location_id: "markos-clinic",
+          participants: ["mara", "elena"]
+        },
+        {
+          id: "rh-2022-coffee",
+          time: loc("2022", "2022"),
+          event: loc(
+            "Nikos begins weekly coffee chats with Spiros at Alkyon Cafe.",
+            "Ο Νίκος ξεκινά εβδομαδιαίους καφέδες με τον Spiros στο καφέ Αλκυών."
+          ),
+          location_id: "alkyon-cafe",
+          participants: ["spiros"]
+        },
+        {
+          id: "rh-2024-warehouse",
+          time: loc("2024", "2024"),
+          event: loc(
+            "Spiros uses the Voss warehouse for discreet storage, paid in cash.",
+            "Ο Spiros χρησιμοποιεί την αποθήκη της Voss για διακριτική αποθήκευση με πληρωμή σε μετρητά."
+          ),
+          location_id: "voss-warehouse",
+          participants: ["spiros", "katerina"]
+        },
+        {
+          id: "rh-2024-keys",
+          time: loc("late 2024", "τέλη 2024"),
+          event: loc(
+            "Tasos is given access to spare keys and a marina access pass.",
+            "Ο Tasos παίρνει πρόσβαση στα εφεδρικά κλειδιά και κάρτα εισόδου στη μαρίνα."
+          ),
+          location_id: "glyfada-marina-office",
+          participants: ["spiros", "tasos"]
+        },
+        {
+          id: "rh-2012-19-05",
+          time: loc("Day of disappearance, 7:05 PM", "Ημέρα εξαφάνισης, 19:05"),
+          event: loc(
+            "Spiros and Tasos review vehicle access logs at the marina office.",
+            "Ο Spiros και ο Tasos ελέγχουν τα αρχεία πρόσβασης οχημάτων στο γραφείο της μαρίνας."
+          ),
+          location_id: "glyfada-marina-office",
+          participants: ["spiros", "tasos"]
+        },
+        {
+          id: "rh-2012-19-55",
+          time: loc("Day of disappearance, 7:55 PM", "Ημέρα εξαφάνισης, 19:55"),
+          event: loc(
+            "Spiros is seen with Tasos grabbing coffee at the marina kiosk.",
+            "Ο Spiros φαίνεται με τον Tasos να παίρνουν καφέ στην καντίνα της μαρίνας."
+          ),
+          location_id: "marina-kiosk",
+          participants: ["spiros", "tasos"]
+        },
+        {
+          id: "rh-2012-20-10",
+          time: loc("Day of disappearance, 8:10 PM", "Ημέρα εξαφάνισης, 20:10"),
+          event: loc(
+            "The first ransom call is placed while Spiros and Elena are at the Asteri villa.",
+            "Η πρώτη κλήση λύτρων γίνεται ενώ ο Spiros και η Elena βρίσκονται στην έπαυλη Αστέρη."
+          ),
+          location_id: "asteri-villa",
+          participants: ["spiros", "elena"]
+        }
+      ],
       time_minutes: 0,
       discovered_evidence: [loc("abandoned sedan")],
       public_accusations: [],
@@ -479,6 +690,69 @@ const CASE_LIBRARY = [
           loc("calculating"),
           loc("charming"),
           loc("secretive")
+        ],
+        background: {
+          age: 68,
+          workplace: loc(
+            "Asteri Shipping family office (Asteri villa)",
+            "Οικογενειακό γραφείο Αστέρη (έπαυλη Αστέρη)"
+          ),
+          income: loc("high (€150k+ / year)", "υψηλό (150k+ € / χρόνο)"),
+          tenure_years: 22,
+          residence: loc("Kifisia", "Κηφισιά"),
+          education: loc("Piraeus University, shipping law", "Πανεπιστήμιο Πειραιά, ναυτιλιακό δίκαιο"),
+          routine: loc(
+            "Arrives by 7:30, handles calls and marina access logs, meets at the marina office late afternoon.",
+            "Φτάνει γύρω στις 7:30, χειρίζεται κλήσεις και αρχεία πρόσβασης στη μαρίνα, συναντάται στο γραφείο το απόγευμα."
+          ),
+          family: loc("Widower, no children, keeps a private circle.", "Χήρος, χωρίς παιδιά, κρατά κλειστό κύκλο."),
+          financial_pressure: loc(
+            "private debts from a failed investment",
+            "ιδιωτικά χρέη από αποτυχημένη επένδυση"
+          )
+        },
+        relationships: [
+          {
+            with: "elena",
+            relation: loc("family advisor and confidant", "σύμβουλος και έμπιστος της οικογένειας"),
+            since: loc("2004", "2004"),
+            trust: loc("high", "υψηλή"),
+            notes: loc("handles sensitive decisions for her", "χειρίζεται ευαίσθητες αποφάσεις")
+          },
+          {
+            with: "tasos",
+            relation: loc("employer and driver", "εργοδότης και οδηγός"),
+            since: loc("2009", "2009"),
+            trust: loc("medium", "μεσαία"),
+            notes: loc("expects obedience and discretion", "περιμένει υπακοή και διακριτικότητα")
+          },
+          {
+            with: "katerina",
+            relation: loc("logistics fixer", "συντονίστρια logistics"),
+            since: loc("2014", "2014"),
+            trust: loc("low", "χαμηλή"),
+            notes: loc("uses her for discreet jobs", "τη χρησιμοποιεί για διακριτικές δουλειές")
+          },
+          {
+            with: "mara",
+            relation: loc("wary of the investigator", "επιφυλακτικός απέναντι στην ερευνήτρια"),
+            since: loc("2021", "2021"),
+            trust: loc("low", "χαμηλή")
+          }
+        ],
+        known_history_ids: [
+          "rh-2004-advisor",
+          "rh-2006-adoption",
+          "rh-2009-driver",
+          "rh-2014-marina",
+          "rh-2018-courier",
+          "rh-2021-mara",
+          "rh-2022-coffee",
+          "rh-2024-warehouse",
+          "rh-2024-keys",
+          "rh-2012-19-05",
+          "rh-2012-19-55",
+          "rh-2012-20-10"
         ],
         goals: [loc("collect the ransom"), loc("control the narrative"), loc("avoid exposure")],
         secrets: [loc("orchestrated the abduction"), loc("is the killer")],
@@ -510,6 +784,56 @@ const CASE_LIBRARY = [
           loc("protective"),
           loc("guilty")
         ],
+        background: {
+          age: 52,
+          workplace: loc("Markos Clinic, Glyfada", "Κλινική Μάρκος, Γλυφάδα"),
+          income: loc("upper-middle (€90k / year)", "άνετο (90k € / χρόνο)"),
+          tenure_years: 18,
+          residence: loc("Glyfada", "Γλυφάδα"),
+          education: loc("Athens Medical School", "Ιατρική Σχολή Αθηνών"),
+          routine: loc(
+            "Clinic mornings, family calls and paperwork in the afternoon.",
+            "Πρωινό ιατρείο, απογευματινές κλήσεις και χαρτιά της οικογένειας."
+          ),
+          family: loc("Adoptive mother to Nikos, protective and anxious.", "Θετή μητέρα του Νίκου, προστατευτική και αγχωμένη."),
+          financial_pressure: loc("protects family funds, avoids public scandal", "προστατεύει τα οικογενειακά κεφάλαια, αποφεύγει σκάνδαλα")
+        },
+        relationships: [
+          {
+            with: "spiros",
+            relation: loc("family associate", "συνεργάτης της οικογένειας"),
+            since: loc("2004", "2004"),
+            trust: loc("strained", "τεντωμένη"),
+            notes: loc("relies on him but watches for leverage", "τον χρειάζεται αλλά προσέχει")
+          },
+          {
+            with: "mara",
+            relation: loc("hired investigator", "προσληφθείσα ερευνήτρια"),
+            since: loc("2021", "2021"),
+            trust: loc("cautious", "συγκρατημένη")
+          },
+          {
+            with: "tasos",
+            relation: loc("family driver", "οικογενειακός οδηγός"),
+            since: loc("2009", "2009"),
+            trust: loc("medium", "μεσαία"),
+            notes: loc("sees him as loyal but pressured", "τον βλέπει πιστό αλλά πιεσμένο")
+          }
+        ],
+        known_history_ids: [
+          "rh-2004-advisor",
+          "rh-2006-adoption",
+          "rh-2009-driver",
+          "rh-2014-marina",
+          "rh-2018-courier",
+          "rh-2021-mara",
+          "rh-2022-coffee",
+          "rh-2024-warehouse",
+          "rh-2024-keys",
+          "rh-2012-19-05",
+          "rh-2012-19-55",
+          "rh-2012-20-10"
+        ],
         goals: [loc("get her son back"), loc("keep the family safe")],
         secrets: [loc("delayed calling police")],
         private_facts: {
@@ -539,6 +863,57 @@ const CASE_LIBRARY = [
           loc("observant"),
           loc("easily pressured"),
           loc("apologetic")
+        ],
+        background: {
+          age: 38,
+          workplace: loc("Asteri family driver", "Οδηγός της οικογένειας Αστέρη"),
+          income: loc("modest (€28k / year)", "μέτριο (28k € / χρόνο)"),
+          tenure_years: 13,
+          residence: loc("Piraeus", "Πειραιάς"),
+          education: loc("technical school, automotive", "τεχνική σχολή, μηχανολογία"),
+          routine: loc(
+            "Starts at 6:45, checks marina routes and vehicle access.",
+            "Ξεκινά στις 6:45, ελέγχει διαδρομές και πρόσβαση στη μαρίνα."
+          ),
+          family: loc("Supports his parents and a younger sister.", "Στηρίζει τους γονείς του και μια μικρή αδελφή."),
+          financial_pressure: loc("car repair loan payments", "δόσεις για επισκευή αυτοκινήτου")
+        },
+        relationships: [
+          {
+            with: "spiros",
+            relation: loc("employer", "εργοδότης"),
+            since: loc("2009", "2009"),
+            trust: loc("medium", "μεσαία"),
+            notes: loc("fears disappointing him", "φοβάται να τον απογοητεύσει")
+          },
+          {
+            with: "elena",
+            relation: loc("family contact", "επαφή της οικογένειας"),
+            since: loc("2009", "2009"),
+            trust: loc("high", "υψηλή"),
+            notes: loc("respects her calm", "σέβεται την ψυχραιμία της")
+          },
+          {
+            with: "katerina",
+            relation: loc("logistics partner", "συνεργάτιδα logistics"),
+            since: loc("2014", "2014"),
+            trust: loc("low", "χαμηλή"),
+            notes: loc("thinks she hides details", "πιστεύει ότι κρύβει λεπτομέρειες")
+          }
+        ],
+        known_history_ids: [
+          "rh-2004-advisor",
+          "rh-2006-adoption",
+          "rh-2009-driver",
+          "rh-2014-marina",
+          "rh-2018-courier",
+          "rh-2021-mara",
+          "rh-2022-coffee",
+          "rh-2024-warehouse",
+          "rh-2024-keys",
+          "rh-2012-19-05",
+          "rh-2012-19-55",
+          "rh-2012-20-10"
         ],
         goals: [loc("avoid blame"), loc("keep his job")],
         secrets: [loc("helped move the victim's car")],
@@ -570,6 +945,57 @@ const CASE_LIBRARY = [
           loc("cautious"),
           loc("greedy")
         ],
+        background: {
+          age: 41,
+          workplace: loc("Voss Logistics, operations manager", "Voss Logistics, διεύθυνση λειτουργιών"),
+          income: loc("upper-middle (€70k / year)", "άνετο (70k € / χρόνο)"),
+          tenure_years: 9,
+          residence: loc("Voula", "Βούλα"),
+          education: loc("business diploma", "δίπλωμα διοίκησης επιχειρήσεων"),
+          routine: loc(
+            "Warehouse afternoons, marina runs at dusk, keeps receipts tight.",
+            "Αποθήκη τα απογεύματα, διαδρομές στη μαρίνα στο σούρουπο, αυστηρά παραστατικά."
+          ),
+          family: loc("Divorced, no kids, keeps work first.", "Διαζευγμένη, χωρίς παιδιά, βάζει τη δουλειά πρώτη."),
+          financial_pressure: loc("cashflow swings and late invoices", "αστάθεια ρευστότητας και καθυστερημένα τιμολόγια")
+        },
+        relationships: [
+          {
+            with: "spiros",
+            relation: loc("client and fixer", "πελάτης και μεσάζων"),
+            since: loc("2014", "2014"),
+            trust: loc("low", "χαμηλή"),
+            notes: loc("expects cash, keeps distance", "ζητά μετρητά, κρατά απόσταση")
+          },
+          {
+            with: "yannis",
+            relation: loc("courier runner", "διανομέας"),
+            since: loc("2018", "2018"),
+            trust: loc("medium", "μεσαία"),
+            notes: loc("pays him per job, keeps leverage", "τον πληρώνει ανά δουλειά")
+          },
+          {
+            with: "tasos",
+            relation: loc("logistics contact", "επαφή logistics"),
+            since: loc("2014", "2014"),
+            trust: loc("low", "χαμηλή"),
+            notes: loc("thinks he panics under pressure", "πιστεύει ότι πανικοβάλλεται")
+          }
+        ],
+        known_history_ids: [
+          "rh-2004-advisor",
+          "rh-2006-adoption",
+          "rh-2009-driver",
+          "rh-2014-marina",
+          "rh-2018-courier",
+          "rh-2021-mara",
+          "rh-2022-coffee",
+          "rh-2024-warehouse",
+          "rh-2024-keys",
+          "rh-2012-19-05",
+          "rh-2012-19-55",
+          "rh-2012-20-10"
+        ],
         goals: [loc("get paid"), loc("stay out of custody")],
         secrets: [loc("provided the location for captivity")],
         private_facts: {
@@ -600,6 +1026,56 @@ const CASE_LIBRARY = [
           loc("evasive"),
           loc("restless")
         ],
+        background: {
+          age: 29,
+          workplace: loc("freelance courier and runner", "ελεύθερος διανομέας και θελήματα"),
+          income: loc("low (€18k / year)", "χαμηλό (18k € / χρόνο)"),
+          tenure_years: 4,
+          residence: loc("Piraeus", "Πειραιάς"),
+          education: loc("finished secondary school", "τελείωσε το λύκειο"),
+          routine: loc(
+            "Late-night runs, avoids fixed schedules, sleeps late.",
+            "Βραδινές διαδρομές, αποφεύγει σταθερά ωράρια, κοιμάται αργά."
+          ),
+          family: loc("Lives with a cousin, sends money home.", "Μένει με ξάδελφο, στέλνει χρήματα στο σπίτι."),
+          financial_pressure: loc("old debt to lenders", "παλιά χρέη σε δανειστές")
+        },
+        relationships: [
+          {
+            with: "katerina",
+            relation: loc("handler and payer", "χειρίστρια και πληρωμή"),
+            since: loc("2018", "2018"),
+            trust: loc("medium", "μεσαία"),
+            notes: loc("takes jobs when cash is tight", "παίρνει δουλειές όταν πιέζεται")
+          },
+          {
+            with: "spiros",
+            relation: loc("indirect client", "έμμεσος πελάτης"),
+            since: loc("2024", "2024"),
+            trust: loc("low", "χαμηλή"),
+            notes: loc("keeps distance, follows instructions", "κρατά απόσταση, ακολουθεί οδηγίες")
+          },
+          {
+            with: "tasos",
+            relation: loc("avoids the family driver", "αποφεύγει τον οδηγό"),
+            since: loc("2024", "2024"),
+            trust: loc("low", "χαμηλή")
+          }
+        ],
+        known_history_ids: [
+          "rh-2004-advisor",
+          "rh-2006-adoption",
+          "rh-2009-driver",
+          "rh-2014-marina",
+          "rh-2018-courier",
+          "rh-2021-mara",
+          "rh-2022-coffee",
+          "rh-2024-warehouse",
+          "rh-2024-keys",
+          "rh-2012-19-05",
+          "rh-2012-19-55",
+          "rh-2012-20-10"
+        ],
         goals: [loc("avoid charges"), loc("distance himself")],
         secrets: [loc("handled the burner phone")],
         private_facts: {
@@ -629,6 +1105,57 @@ const CASE_LIBRARY = [
           loc("methodical"),
           loc("plainspoken"),
           loc("observant")
+        ],
+        background: {
+          age: 35,
+          workplace: loc("private investigator, Piraeus office", "ιδιωτική ερευνήτρια, γραφείο Πειραιά"),
+          income: loc("variable (€55k / year)", "μεταβλητό (55k € / χρόνο)"),
+          tenure_years: 7,
+          residence: loc("Kallithea", "Καλλιθέα"),
+          education: loc("criminal justice diploma", "δίπλωμα εγκληματολογίας"),
+          routine: loc(
+            "Morning surveillance, late-night calls, keeps detailed notebooks.",
+            "Πρωινή παρακολούθηση, νυχτερινές κλήσεις, κρατά λεπτομερή σημειωματάρια."
+          ),
+          family: loc("Single, close to her sister.", "Άγαμη, κοντά στην αδελφή της."),
+          financial_pressure: loc("keeps cash reserves, avoids debt", "κρατά αποθέματα, αποφεύγει χρέη")
+        },
+        relationships: [
+          {
+            with: "elena",
+            relation: loc("client and source", "πελάτισσα και πηγή"),
+            since: loc("2021", "2021"),
+            trust: loc("medium", "μεσαία"),
+            notes: loc("protective of her, pushes for facts", "την προστατεύει αλλά πιέζει για αλήθεια")
+          },
+          {
+            with: "spiros",
+            relation: loc("skeptical of his control", "σκεπτικισμός για τον έλεγχό του"),
+            since: loc("2021", "2021"),
+            trust: loc("low", "χαμηλή"),
+            notes: loc("watches his narrative closely", "παρακολουθεί τη γραμμή του")
+          },
+          {
+            with: "tasos",
+            relation: loc("potential witness", "πιθανός μάρτυρας"),
+            since: loc("2012", "2012"),
+            trust: loc("medium", "μεσαία"),
+            notes: loc("thinks he saw more than he says", "πιστεύει ότι είδε περισσότερα")
+          }
+        ],
+        known_history_ids: [
+          "rh-2004-advisor",
+          "rh-2006-adoption",
+          "rh-2009-driver",
+          "rh-2014-marina",
+          "rh-2018-courier",
+          "rh-2021-mara",
+          "rh-2022-coffee",
+          "rh-2024-warehouse",
+          "rh-2024-keys",
+          "rh-2012-19-05",
+          "rh-2012-19-55",
+          "rh-2012-20-10"
         ],
         goals: [loc("trace the money trail"), loc("protect her client")],
         secrets: [loc("found blood evidence early")],

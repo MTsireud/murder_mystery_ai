@@ -1,6 +1,13 @@
 import { generateCharacterResponse, extractEvidenceFromClaims } from "./llm.js";
 import { localizeList, localizePublicState, normalizeLanguage, t, tAll } from "./i18n.js";
-import { createDefaultMemory, normalizeMemory, pushMemoryItem, trimText, updateAffect } from "./memory.js";
+import {
+  createDefaultMemory,
+  normalizeMemory,
+  pushMemoryItem,
+  trimText,
+  updateAffect,
+  updateHeat
+} from "./memory.js";
 
 function canonicalValue(value) {
   if (!value) return "";
@@ -123,10 +130,15 @@ export async function runTurn({ state, characterId, message, language, modelMode
 
   const memory = ensureCharacterMemory(character);
   memory.affect = updateAffect(memory.affect, message);
+  memory.heat = updateHeat(memory.heat, { intent: characterResponse.intent, message });
   recordHeard(memory, message, now);
   recordCommitment(memory, characterResponse.dialogue, now);
   if (Array.isArray(characterResponse.claims)) {
     characterResponse.claims.forEach((claim) => recordClaim(memory.self_claims, claim, now));
+  }
+
+  if (memory.heat >= 60) {
+    addUnique(state.public_state.tensions, tAll("tension_suspect", { name: character.name }));
   }
 
   const newAccusations = [];

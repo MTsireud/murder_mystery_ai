@@ -137,6 +137,11 @@ function selectModel({ intent, message, mode }) {
   return isCritical ? CRITICAL_MODEL : ROUTINE_MODEL;
 }
 
+function formatValue(value, language) {
+  if (!value) return "";
+  return getLocalized(value, language);
+}
+
 function buildCharacterPrompt({ character, language, publicState, allCharacters }) {
   const role = getLocalized(character.role, language);
   const psycho = (character.psycho || []).map((item) => `- ${getLocalized(item, language)}`).join("\n");
@@ -163,7 +168,80 @@ function buildCharacterPrompt({ character, language, publicState, allCharacters 
     .slice(-2)
     .map((item) => `- ${item.text}`)
     .join("\n");
-  const stance = summarizeAffect(memory.affect);
+  const stance = summarizeAffect(memory.affect, memory.heat);
+  const heatLevel = memory.heat >= 70 ? "high" : memory.heat >= 40 ? "medium" : "low";
+
+  const background = character.background || {};
+  const backgroundLines = [
+    background.workplace ? `- workplace: ${formatValue(background.workplace, language)}` : "",
+    background.income ? `- income: ${formatValue(background.income, language)}` : "",
+    Number.isFinite(background.tenure_years)
+      ? `- tenure: ${background.tenure_years} years`
+      : "",
+    background.residence ? `- residence: ${formatValue(background.residence, language)}` : "",
+    background.education ? `- education: ${formatValue(background.education, language)}` : "",
+    background.routine ? `- routine: ${formatValue(background.routine, language)}` : "",
+    background.family ? `- family: ${formatValue(background.family, language)}` : "",
+    background.financial_pressure
+      ? `- financial pressure: ${formatValue(background.financial_pressure, language)}`
+      : ""
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const relationshipLines = (character.relationships || [])
+    .map((rel) => {
+      if (!rel || !rel.with) return "";
+      const target =
+        allCharacters.find((entry) => entry.id === rel.with)?.name || rel.with;
+      const relation = formatValue(rel.relation, language);
+      const since = rel.since ? formatValue(rel.since, language) : "";
+      const trust = rel.trust ? formatValue(rel.trust, language) : "";
+      const notes = rel.notes ? formatValue(rel.notes, language) : "";
+      const details = [relation, since ? `since ${since}` : "", trust ? `trust: ${trust}` : "", notes]
+        .filter(Boolean)
+        .join("; ");
+      return `- ${target}${details ? ` (${details})` : ""}`;
+    })
+    .filter(Boolean)
+    .join("\n");
+
+  const caseLocations = Array.isArray(publicState?.case_locations)
+    ? publicState.case_locations
+    : [];
+  const locationNameList = caseLocations
+    .map((loc) => formatValue(loc.name, language))
+    .filter(Boolean)
+    .slice(0, 6)
+    .join(", ");
+  const locationById = new Map(
+    caseLocations
+      .filter((loc) => loc && loc.id && loc.name)
+      .map((loc) => [loc.id, formatValue(loc.name, language)])
+  );
+
+  const historyList = Array.isArray(publicState?.relationship_history)
+    ? publicState.relationship_history
+    : [];
+  const knownHistoryIds = Array.isArray(character.known_history_ids)
+    ? new Set(character.known_history_ids)
+    : null;
+  const knownHistory = historyList.filter((entry) => {
+    if (!entry || !entry.id) return false;
+    if (!knownHistoryIds) return true;
+    return knownHistoryIds.has(entry.id);
+  });
+  const historyLines = knownHistory
+    .slice(-8)
+    .map((entry) => {
+      const timeLabel = formatValue(entry.time, language);
+      const eventText = formatValue(entry.event, language);
+      const location = entry.location_id ? locationById.get(entry.location_id) : "";
+      const tail = location ? ` @ ${location}` : "";
+      return `- ${timeLabel || "time unknown"}: ${eventText}${tail}`;
+    })
+    .filter(Boolean)
+    .join("\n");
 
   const observationText = getLocalized(character.private_facts?.observation?.text, language);
   const observationEvidence = getLocalized(character.private_facts?.observation?.evidence, language);
@@ -189,7 +267,9 @@ function buildCharacterPrompt({ character, language, publicState, allCharacters 
     "You can lie if your lie strategy tags support it, but do not invent verified evidence.",
     "If you do not know something, say you do not know.",
     "Never mention hidden truth unless it is in your private facts.",
+    "If you evade or stall, suspicion rises. Consider whether sharing safe details reduces heat.",
     "Let your stance toward the detective affect your tone and cooperation.",
+    "Choose how much background or history to reveal based on your goals and the detective's pressure.",
     "Return ONLY valid JSON that matches the provided schema.",
     "",
     "Personality traits:",
@@ -210,6 +290,14 @@ function buildCharacterPrompt({ character, language, publicState, allCharacters 
     `- ${(character.lie_strategy_tags || []).join(", ") || "none"}`,
     "Your current stance toward the detective:",
     `- ${stance}`,
+    "Suspicion risk level:",
+    `- ${heatLevel}`,
+    "Background (what you know about yourself):",
+    backgroundLines || "-",
+    "Known relationships (with others):",
+    relationshipLines || "-",
+    "Known relationship history timeline:",
+    historyLines || "-",
     "Your commitments (do not contradict):",
     commitments || "-",
     "Your recent claims (unverified unless evidence listed):",
@@ -221,7 +309,15 @@ function buildCharacterPrompt({ character, language, publicState, allCharacters 
     "Public evidence (summary):",
     evidenceList || "-",
     "Public accusations (summary):",
-    accusations || "-"
+    accusations || "-",
+    "Victim dossier:",
+    victimBio || "-",
+    victimLastSeen || "-",
+    victimRel || "-",
+    "Canonical locations (use these exact labels):",
+    locationNameList || "-",
+    "Police call time (do not contradict):",
+    policeCallTime || "-"
   ].join("\n");
 }
 
@@ -657,3 +753,8 @@ export function extractEvidenceFromClaims(claims) {
   }
   return evidence;
 }
+  const victimDossier = publicState?.victim_dossier || {};
+  const victimBio = formatValue(victimDossier.bio, language);
+  const victimLastSeen = formatValue(victimDossier.last_seen, language);
+  const victimRel = formatValue(victimDossier.relationship_summary, language);
+  const policeCallTime = formatValue(publicState?.police_call_time, language);
