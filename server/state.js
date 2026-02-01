@@ -1,6 +1,7 @@
 import { randomUUID } from "crypto";
 import { getLocalized, localizePublicState, normalizeLanguage } from "./i18n.js";
 import { createStateFromCase, getCaseById, getCaseList } from "./cases.js";
+import { createDefaultMemory, normalizeMemory } from "./memory.js";
 
 const sessions = new Map();
 
@@ -88,16 +89,25 @@ export function buildStateFromClient({ caseId, clientState }) {
   }
 
   const knowledgeById = new Map();
+  const memoryById = new Map();
   if (Array.isArray(clientState.characters)) {
     clientState.characters.forEach((character) => {
       if (character?.id) {
         knowledgeById.set(character.id, Array.isArray(character.knowledge) ? character.knowledge : []);
+        if (character.memory) {
+          memoryById.set(character.id, normalizeMemory(character.memory));
+        }
       }
     });
   }
   state.characters = state.characters.map((character) => {
     if (knowledgeById.has(character.id)) {
       character.knowledge = knowledgeById.get(character.id);
+    }
+    if (memoryById.has(character.id)) {
+      character.memory = memoryById.get(character.id);
+    } else {
+      character.memory = normalizeMemory(character.memory || createDefaultMemory());
     }
     return character;
   });
@@ -116,7 +126,8 @@ export function extractClientState(state) {
     },
     characters: state.characters.map((character) => ({
       id: character.id,
-      knowledge: Array.isArray(character.knowledge) ? character.knowledge : []
+      knowledge: Array.isArray(character.knowledge) ? character.knowledge : [],
+      memory: normalizeMemory(character.memory || createDefaultMemory())
     })),
     events: Array.isArray(state.events) ? state.events : [],
     detective_knowledge: Array.isArray(state.detective_knowledge) ? state.detective_knowledge : []

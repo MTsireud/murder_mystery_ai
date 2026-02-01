@@ -64,6 +64,10 @@ const appState = {
   watsonQuality: 70
 };
 
+const CLIENT_STATE_KEY = "clientState";
+const CLIENT_STATE_STORAGE_VERSION = 2;
+const CLIENT_STATE_TTL_DAYS = 365;
+
 const SKILL_PHASE_LABELS = {
   early: "skillsPhaseEarly",
   mid: "skillsPhaseMid",
@@ -276,8 +280,12 @@ const SKILLS = [
   }
 ];
 
-function loadStoredClientState() {
-  const raw = localStorage.getItem("clientState");
+function daysToMs(days) {
+  return days * 24 * 60 * 60 * 1000;
+}
+
+function getStoredClientStatePayload() {
+  const raw = localStorage.getItem(CLIENT_STATE_KEY);
   if (!raw) return null;
   try {
     return JSON.parse(raw);
@@ -286,9 +294,50 @@ function loadStoredClientState() {
   }
 }
 
+function isClientStateExpired(payload) {
+  if (!payload || typeof payload !== "object") return false;
+  const anchor = payload.savedAt || payload.createdAt;
+  if (!anchor) return false;
+  const anchorMs = Date.parse(anchor);
+  if (!Number.isFinite(anchorMs)) return false;
+  return Date.now() - anchorMs > daysToMs(CLIENT_STATE_TTL_DAYS);
+}
+
+function loadStoredClientState() {
+  const payload = getStoredClientStatePayload();
+  if (!payload) return null;
+  if (payload.state && (payload.savedAt || payload.createdAt)) {
+    if (isClientStateExpired(payload)) {
+      localStorage.removeItem(CLIENT_STATE_KEY);
+      return null;
+    }
+    return payload.state || null;
+  }
+  return payload;
+}
+
 function storeClientState(state) {
   if (!state) return;
-  localStorage.setItem("clientState", JSON.stringify(state));
+  const existing = getStoredClientStatePayload();
+  const createdAt = existing?.createdAt || new Date().toISOString();
+  const payload = {
+    version: CLIENT_STATE_STORAGE_VERSION,
+    createdAt,
+    savedAt: new Date().toISOString(),
+    state
+  };
+  localStorage.setItem(CLIENT_STATE_KEY, JSON.stringify(payload));
+}
+
+function clearStoredClientState() {
+  localStorage.removeItem(CLIENT_STATE_KEY);
+}
+
+function shouldClearOnSolve(result) {
+  if (!result) return false;
+  if (result.verdict === "correct") return true;
+  if (result.reveal_requested) return true;
+  return false;
 }
 
 function loadActiveCharacterByCase() {
@@ -1457,6 +1506,7 @@ resetBtn.addEventListener("click", async () => {
     })
   });
   const data = await res.json();
+  clearStoredClientState();
   applyState(data, { clearChat: true });
   appendMessage(I18N.t(appState.language, "caseReset"), "detective");
   modelUsedValue.textContent = "-";
@@ -1523,6 +1573,7 @@ caseSelect.addEventListener("change", async () => {
     })
   });
   const data = await res.json();
+  clearStoredClientState();
   applyState(data, { clearChat: true });
   appendMessage(
     I18N.t(appState.language, "caseSwitched", { title: appState.publicState?.case_title || nextCaseId }),
@@ -1580,7 +1631,11 @@ checkSolutionBtn.addEventListener("click", async () => {
   }
 
   renderSolutionResult(data.result);
-  if (data.client_state) {
+  const endOfGame = shouldClearOnSolve(data.result);
+  if (endOfGame) {
+    clearStoredClientState();
+    appState.clientState = null;
+  } else if (data.client_state) {
     appState.clientState = data.client_state;
     storeClientState(appState.clientState);
   }

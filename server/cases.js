@@ -1,4 +1,5 @@
 import { getLocalized, normalizeLanguage } from "./i18n.js";
+import { createDefaultMemory, normalizeMemory } from "./memory.js";
 
 const loc = (en, el = en) => ({ en, el });
 
@@ -2146,6 +2147,11 @@ export function getCaseList(lang) {
 
 export function createStateFromCase(caseData) {
   const data = deepClone(caseData);
+  const characters = (data.characters || []).map((character) => ({
+    ...character,
+    knowledge: Array.isArray(character.knowledge) ? character.knowledge : [],
+    memory: normalizeMemory(character.memory || createDefaultMemory())
+  }));
   return {
     case_id: data.id,
     truth: data.truth,
@@ -2157,7 +2163,7 @@ export function createStateFromCase(caseData) {
       case_synopsis: data.synopsis,
       case_briefing_source: data.public_state?.case_briefing_source || "library"
     },
-    characters: data.characters,
+    characters,
     events: [],
     detective_knowledge: []
   };

@@ -1,5 +1,6 @@
 import { generateCharacterResponse, extractEvidenceFromClaims } from "./llm.js";
 import { localizeList, localizePublicState, normalizeLanguage, t, tAll } from "./i18n.js";
+import { createDefaultMemory, normalizeMemory, pushMemoryItem, trimText, updateAffect } from "./memory.js";
 
 function canonicalValue(value) {
   if (!value) return "";
@@ -33,6 +34,44 @@ function addKnowledge(state, characterId, fact) {
   const character = state.characters.find((c) => c.id === characterId);
   if (!character) return;
   addUnique(character.knowledge, fact);
+}
+
+function ensureCharacterMemory(character) {
+  if (!character) return createDefaultMemory();
+  character.memory = normalizeMemory(character.memory || createDefaultMemory());
+  return character.memory;
+}
+
+function recordCommitment(memory, text, timeMinutes) {
+  if (!memory || !text) return;
+  pushMemoryItem(memory.commitments, {
+    text: trimText(text),
+    time_minutes: timeMinutes,
+    source: "dialogue"
+  });
+}
+
+function recordClaim(list, claim, timeMinutes) {
+  if (!list || !claim) return;
+  const text = trimText(claim.content || claim.evidence || "");
+  if (!text) return;
+  pushMemoryItem(list, {
+    text,
+    type: claim.type || "other",
+    confidence: claim.confidence || "low",
+    evidence: trimText(claim.evidence || ""),
+    time_minutes: timeMinutes
+  });
+}
+
+function recordHeard(memory, text, timeMinutes) {
+  if (!memory || !text) return;
+  pushMemoryItem(memory.heard_claims, {
+    text: trimText(text),
+    type: "detective_message",
+    confidence: "medium",
+    time_minutes: timeMinutes
+  });
 }
 
 export async function runTurn({ state, characterId, message, language, modelMode }) {
@@ -81,6 +120,14 @@ export async function runTurn({ state, characterId, message, language, modelMode
     "detective",
     t(lang, "character_said", { name: character.name, text: characterResponse.dialogue })
   );
+
+  const memory = ensureCharacterMemory(character);
+  memory.affect = updateAffect(memory.affect, message);
+  recordHeard(memory, message, now);
+  recordCommitment(memory, characterResponse.dialogue, now);
+  if (Array.isArray(characterResponse.claims)) {
+    characterResponse.claims.forEach((claim) => recordClaim(memory.self_claims, claim, now));
+  }
 
   const newAccusations = [];
   if (characterResponse.intent === "accuse") {

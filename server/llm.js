@@ -1,4 +1,5 @@
 import { getLocalized, normalizeLanguage, t } from "./i18n.js";
+import { normalizeMemory, summarizeAffect } from "./memory.js";
 import { getOpenAIClient } from "./openai.js";
 
 const ROUTINE_MODEL = process.env.OPENAI_MODEL_ROUTINE || "gpt-4.1-mini";
@@ -145,6 +146,24 @@ function buildCharacterPrompt({ character, language, publicState, allCharacters 
     .slice(-8)
     .map((item) => `- ${getLocalized(item, language)}`)
     .join("\n");
+  const memory = normalizeMemory(character.memory || {});
+  const commitmentItems = (memory.commitments || []).filter((item) => item?.text);
+  const claimItems = (memory.self_claims || []).filter((item) => item?.text);
+  const heardItems = (memory.heard_claims || []).filter((item) => item?.text);
+
+  const commitments = commitmentItems
+    .slice(-3)
+    .map((item) => `- ${item.text}`)
+    .join("\n");
+  const selfClaims = claimItems
+    .slice(-3)
+    .map((item) => `- ${item.text}${item.evidence ? ` (evidence: ${item.evidence})` : ""}`)
+    .join("\n");
+  const heardClaims = heardItems
+    .slice(-2)
+    .map((item) => `- ${item.text}`)
+    .join("\n");
+  const stance = summarizeAffect(memory.affect);
 
   const observationText = getLocalized(character.private_facts?.observation?.text, language);
   const observationEvidence = getLocalized(character.private_facts?.observation?.evidence, language);
@@ -170,6 +189,7 @@ function buildCharacterPrompt({ character, language, publicState, allCharacters 
     "You can lie if your lie strategy tags support it, but do not invent verified evidence.",
     "If you do not know something, say you do not know.",
     "Never mention hidden truth unless it is in your private facts.",
+    "Let your stance toward the detective affect your tone and cooperation.",
     "Return ONLY valid JSON that matches the provided schema.",
     "",
     "Personality traits:",
@@ -188,6 +208,14 @@ function buildCharacterPrompt({ character, language, publicState, allCharacters 
     suspectLine ? `- suspicion: ${suspectLine}` : "- suspicion: none",
     "Lie strategy tags:",
     `- ${(character.lie_strategy_tags || []).join(", ") || "none"}`,
+    "Your current stance toward the detective:",
+    `- ${stance}`,
+    "Your commitments (do not contradict):",
+    commitments || "-",
+    "Your recent claims (unverified unless evidence listed):",
+    selfClaims || "-",
+    "What you've heard from the detective (unverified):",
+    heardClaims || "-",
     "Knowledge (latest first):",
     knowledge || "-",
     "Public evidence (summary):",
