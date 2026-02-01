@@ -427,8 +427,8 @@ const CASE_LIBRARY = [
     id: "athens-2012-kidnapping",
     title: loc("Ransom in the Suburbs"),
     subtitle: loc("Glyfada, Athens  -  2012"),
-    headline: loc("A trusted friend orchestrates a vanished heir."),
-    synopsis: loc("An insider abduction, a ransom pipeline, and a family torn over silence."),
+    headline: loc("A vanished heir and a rising ransom demand."),
+    synopsis: loc("A disappearance, a ransom pipeline, and a family torn over silence."),
     plot: loc(
       "A well-connected family reports their adult son missing after a night meeting. A familiar face manages the communications, urging silence while money changes hands."
     ),
@@ -549,7 +549,7 @@ const CASE_LIBRARY = [
       {
         id: "katerina",
         name: "Katerina Voss",
-        role: loc("Accomplice"),
+        role: loc("Logistics Contractor"),
         psycho: [
           loc("hard-eyed"),
           loc("impatient"),
@@ -637,7 +637,7 @@ const CASE_LIBRARY = [
     title: loc("Street of Echoes"),
     subtitle: loc("Istanbul  -  2007"),
     headline: loc("A public editor is shot outside his office."),
-    synopsis: loc("A lone gunman story fractures into a web of handlers and warnings ignored."),
+    synopsis: loc("A daylight attack fractures into a web of warnings and unanswered questions."),
     plot: loc(
       "A prominent editor is attacked in daylight after receiving threats. The shooter is detained quickly, but questions about who steered him and who ignored warnings ripple through the newsroom."
     ),
@@ -674,7 +674,7 @@ const CASE_LIBRARY = [
       {
         id: "cem",
         name: "Cem Aktan",
-        role: loc("Shooter"),
+        role: loc("Local Youth"),
         psycho: [
           loc("impressionable"),
           loc("nervous"),
@@ -1473,7 +1473,7 @@ const CASE_LIBRARY = [
     title: loc("Town Hall Shot"),
     subtitle: loc("Kassel District  -  2019"),
     headline: loc("A regional official is killed at home."),
-    synopsis: loc("A lone gunman narrative clashes with logistics and online radicalization traces."),
+    synopsis: loc("A late-night killing raises questions about threats and access."),
     plot: loc(
       "A regional official is shot on his terrace after months of threats. Investigators find a gunman with extremist ties, but the weapon trail suggests he wasn't alone."
     ),
@@ -1510,7 +1510,7 @@ const CASE_LIBRARY = [
       {
         id: "stefan",
         name: "Stefan Kurt",
-        role: loc("Extremist Shooter"),
+        role: loc("Range Regular"),
         psycho: [
           loc("rigid"),
           loc("ideological"),
@@ -1890,7 +1890,7 @@ const CASE_LIBRARY = [
     id: "kyoto-2013",
     title: loc("The Beneficiary"),
     subtitle: loc("Kyoto  -  2013"),
-    headline: loc("A series of sudden deaths points to one heir."),
+    headline: loc("A string of sudden deaths raises questions."),
     synopsis: loc("A pattern emerges when insurance files and dating records align."),
     plot: loc(
       "A wealthy retiree dies suddenly after a short relationship. Investigators notice similar cases linked to the same matchmaker, raising the question of a single orchestrator."
