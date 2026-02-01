@@ -8,6 +8,7 @@ import {
   updateAffect,
   updateHeat
 } from "./memory.js";
+import { selectAnswerFrame } from "./router.js";
 
 function canonicalValue(value) {
   if (!value) return "";
@@ -90,13 +91,23 @@ export async function runTurn({ state, characterId, message, language, modelMode
   }
 
   const lang = normalizeLanguage(language);
+  const memory = ensureCharacterMemory(character);
+  const routedFrame = selectAnswerFrame({
+    message,
+    language: lang,
+    character,
+    publicState: state.public_state,
+    memory
+  });
+  const activeFrame = routedFrame || null;
   const characterResponse = await generateCharacterResponse({
     character,
     message,
     language: lang,
     allCharacters: state.characters,
     publicState: state.public_state,
-    modelMode
+    modelMode,
+    answerFrame: activeFrame
   });
 
   const now = state.public_state.time_minutes;
@@ -128,7 +139,6 @@ export async function runTurn({ state, characterId, message, language, modelMode
     t(lang, "character_said", { name: character.name, text: characterResponse.dialogue })
   );
 
-  const memory = ensureCharacterMemory(character);
   memory.affect = updateAffect(memory.affect, message);
   memory.heat = updateHeat(memory.heat, { intent: characterResponse.intent, message });
   recordHeard(memory, message, now);
@@ -136,6 +146,13 @@ export async function runTurn({ state, characterId, message, language, modelMode
   if (Array.isArray(characterResponse.claims)) {
     characterResponse.claims.forEach((claim) => recordClaim(memory.self_claims, claim, now));
   }
+  if (activeFrame?.key) {
+    memory.answer_frames[activeFrame.key] = activeFrame;
+  }
+  if (activeFrame?.variant === "lie") {
+    addUnique(state.public_state.tensions, tAll("tension_lie", { name: character.name }));
+  }
+  memory.last_question = message;
 
   if (memory.heat >= 60) {
     addUnique(state.public_state.tensions, tAll("tension_suspect", { name: character.name }));

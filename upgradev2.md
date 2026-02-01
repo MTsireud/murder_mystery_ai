@@ -33,6 +33,12 @@
   - Check: prompt includes background + relationships; no new names outside roster.
 - [x] DATA-5: Add **global relationship history timeline** aligned with case plot.
   - Check: timeline is consistent with truth; characters receive known history in prompts.
+- [x] ARCH-1: Add **story constructor** to ensure story_pack defaults per character.
+  - Check: all characters have last_seen/last_contact frames (even if “none”).
+- [x] ARCH-2: Add **answer-frame router** and prompt framing for consistency.
+  - Check: direct questions map to frames and avoid conflicting times.
+- [x] ARCH-3: Add **truth/lie frames** for critical anchors with deterministic selection.
+  - Check: lies are consistent and logged as tension signals.
 
 ### P1 — Intelligence Upgrades
 - [ ] MEMORY-1: Store last_question + last_answer per character (client_state memory).

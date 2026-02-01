@@ -1,5 +1,6 @@
 import { getLocalized, normalizeLanguage } from "./i18n.js";
 import { createDefaultMemory, normalizeMemory } from "./memory.js";
+import { enrichStateFromCase } from "./story.js";
 
 const loc = (en, el = en) => ({ en, el });
 
@@ -754,6 +755,73 @@ const CASE_LIBRARY = [
           "rh-2012-19-55",
           "rh-2012-20-10"
         ],
+        story_pack: {
+          last_seen: {
+            mode: "none",
+            time: loc("earlier this week", "νωρίτερα μέσα στην εβδομάδα"),
+            location_id: "alkyon-cafe",
+            note: loc(
+              "did not see him in person on the day of the disappearance",
+              "δεν τον είδα από κοντά την ημέρα της εξαφάνισης"
+            )
+          },
+          last_contact: {
+            mode: "phone",
+            time: loc("8:10 PM", "20:10"),
+            with: loc("the family", "την οικογένεια"),
+            note: loc(
+              "handled the call logistics, not a direct conversation with Nikos",
+              "χειρίστηκα τις κλήσεις, όχι απευθείας με τον Νίκο"
+            )
+          }
+        },
+        frames: {
+          last_seen: {
+            truth: {
+              text: loc(
+                "I did not see Nikos in person that night. The last time was earlier in the week at Alkyon Cafe.",
+                "Δεν είδα τον Νίκο από κοντά εκείνο το βράδυ. Την τελευταία φορά ήταν νωρίτερα μέσα στην εβδομάδα στο καφέ Αλκυών."
+              )
+            },
+            lie: {
+              text: loc(
+                "I saw him briefly at the villa around 6:30 PM before he left.",
+                "Τον είδα για λίγο στην έπαυλη γύρω στις 18:30 πριν φύγει."
+              )
+            },
+            lie_allowed: true
+          },
+          last_contact: {
+            truth: {
+              text: loc(
+                "My last contact was a family call at 8:10 PM, not directly with Nikos.",
+                "Η τελευταία επαφή ήταν οικογενειακή κλήση στις 20:10, όχι απευθείας με τον Νίκο."
+              )
+            },
+            lie: {
+              text: loc(
+                "We exchanged a brief call around 7:15 PM about routine matters.",
+                "Ανταλλάξαμε μια σύντομη κλήση γύρω στις 19:15 για τυπικά θέματα."
+              )
+            },
+            lie_allowed: true
+          },
+          alibi_at_time: {
+            truth: {
+              text: loc(
+                "At 7:40 PM I was at the marina office finishing access logs, then I walked toward the kiosk. Tasos can confirm.",
+                "Στις 19:40 ήμουν στο γραφείο της μαρίνας, τελείωνα αρχεία πρόσβασης και μετά πήγα προς την καντίνα. Ο Τάσος μπορεί να το επιβεβαιώσει."
+              )
+            },
+            lie: {
+              text: loc(
+                "At 7:40 PM I was already at the family villa handling paperwork.",
+                "Στις 19:40 ήμουν ήδη στην έπαυλη της οικογένειας και χειριζόμουν χαρτιά."
+              )
+            },
+            lie_allowed: true
+          }
+        },
         goals: [loc("collect the ransom"), loc("control the narrative"), loc("avoid exposure")],
         secrets: [loc("orchestrated the abduction"), loc("is the killer")],
         private_facts: {
@@ -834,6 +902,73 @@ const CASE_LIBRARY = [
           "rh-2012-19-55",
           "rh-2012-20-10"
         ],
+        story_pack: {
+          last_seen: {
+            mode: "in_person",
+            time: loc("around 6:30 PM", "γύρω στις 18:30"),
+            location_id: "asteri-villa",
+            note: loc(
+              "saw him briefly at the villa before he left",
+              "τον είδα για λίγο στην έπαυλη πριν φύγει"
+            )
+          },
+          last_contact: {
+            mode: "phone",
+            time: loc("8:10 PM", "20:10"),
+            with: loc("Spiros and the family line", "τον Spiros και την οικογενειακή γραμμή"),
+            note: loc(
+              "focused on ransom instructions, not direct with Nikos",
+              "επικεντρώθηκα στις οδηγίες λύτρων, όχι απευθείας με τον Νίκο"
+            )
+          }
+        },
+        frames: {
+          last_seen: {
+            truth: {
+              text: loc(
+                "I saw Nikos at the villa around 6:30 PM before he left for the marina.",
+                "Είδα τον Νίκο στην έπαυλη γύρω στις 18:30 πριν φύγει για τη μαρίνα."
+              )
+            },
+            lie: {
+              text: loc(
+                "I saw him at the clinic lobby shortly before 7 PM.",
+                "Τον είδα στο λόμπι της κλινικής λίγο πριν τις 19:00."
+              )
+            },
+            lie_allowed: true
+          },
+          last_contact: {
+            truth: {
+              text: loc(
+                "The last contact was the family call at 8:10 PM, coordinated with Spiros.",
+                "Η τελευταία επαφή ήταν η οικογενειακή κλήση στις 20:10, συντονισμένη με τον Spiros."
+              )
+            },
+            lie: {
+              text: loc(
+                "We exchanged a short text right before 7:30 PM.",
+                "Ανταλλάξαμε ένα σύντομο μήνυμα λίγο πριν τις 19:30."
+              )
+            },
+            lie_allowed: true
+          },
+          alibi_at_time: {
+            truth: {
+              text: loc(
+                "At 7:40 PM I was at the Asteri villa waiting for updates. Spiros was with me.",
+                "Στις 19:40 ήμουν στην έπαυλη Αστέρη περιμένοντας ενημέρωση. Ο Spiros ήταν μαζί μου."
+              )
+            },
+            lie: {
+              text: loc(
+                "At 7:40 PM I was still at the clinic handling late paperwork.",
+                "Στις 19:40 ήμουν ακόμη στην κλινική και χειριζόμουν χαρτιά."
+              )
+            },
+            lie_allowed: true
+          }
+        },
         goals: [loc("get her son back"), loc("keep the family safe")],
         secrets: [loc("delayed calling police")],
         private_facts: {
@@ -915,6 +1050,73 @@ const CASE_LIBRARY = [
           "rh-2012-19-55",
           "rh-2012-20-10"
         ],
+        story_pack: {
+          last_seen: {
+            mode: "in_person",
+            time: loc("around 7:35 PM", "γύρω στις 19:35"),
+            location_id: "glyfada-marina-lot",
+            note: loc(
+              "saw him near the lot entrance before the commotion",
+              "τον είδα κοντά στην είσοδο πριν τον πανικό"
+            )
+          },
+          last_contact: {
+            mode: "none",
+            time: "",
+            with: loc("Nikos", "τον Νίκο"),
+            note: loc(
+              "no direct call after he left",
+              "δεν υπήρξε άμεση κλήση μετά που έφυγε"
+            )
+          }
+        },
+        frames: {
+          last_seen: {
+            truth: {
+              text: loc(
+                "I last saw Nikos around 7:35 PM at the Glyfada marina lot entrance.",
+                "Τον είδα τελευταία φορά γύρω στις 19:35 στην είσοδο του πάρκινγκ της μαρίνας Γλυφάδας."
+              )
+            },
+            lie: {
+              text: loc(
+                "I saw him briefly at the family villa just before 7 PM.",
+                "Τον είδα για λίγο στην έπαυλη λίγο πριν τις 19:00."
+              )
+            },
+            lie_allowed: true
+          },
+          last_contact: {
+            truth: {
+              text: loc(
+                "I had no direct call with Nikos after he left.",
+                "Δεν είχα καμία άμεση κλήση με τον Νίκο αφού έφυγε."
+              )
+            },
+            lie: {
+              text: loc(
+                "He called me once around 7:50 PM for a quick pickup check.",
+                "Με κάλεσε μια φορά γύρω στις 19:50 για έναν γρήγορο έλεγχο μεταφοράς."
+              )
+            },
+            lie_allowed: true
+          },
+          alibi_at_time: {
+            truth: {
+              text: loc(
+                "At 7:40 PM I was at the marina lot by Gate 2. Spiros can confirm and the gate camera should show me.",
+                "Στις 19:40 ήμουν στο πάρκινγκ της μαρίνας, κοντά στην Πύλη 2. Ο Spiros μπορεί να το επιβεβαιώσει και υπάρχει κάμερα στην πύλη."
+              )
+            },
+            lie: {
+              text: loc(
+                "At 7:40 PM I was outside the family villa waiting in the car.",
+                "Στις 19:40 ήμουν έξω από την έπαυλη της οικογένειας, περιμένοντας στο αυτοκίνητο."
+              )
+            },
+            lie_allowed: true
+          }
+        },
         goals: [loc("avoid blame"), loc("keep his job")],
         secrets: [loc("helped move the victim's car")],
         private_facts: {
@@ -996,6 +1198,73 @@ const CASE_LIBRARY = [
           "rh-2012-19-55",
           "rh-2012-20-10"
         ],
+        story_pack: {
+          last_seen: {
+            mode: "in_person",
+            time: loc("two days earlier", "δύο μέρες πριν"),
+            location_id: "glyfada-marina-office",
+            note: loc(
+              "briefly crossed paths at the marina office",
+              "διασταυρωθήκαμε για λίγο στο γραφείο της μαρίνας"
+            )
+          },
+          last_contact: {
+            mode: "none",
+            time: "",
+            with: loc("Nikos", "τον Νίκο"),
+            note: loc(
+              "handled logistics, not personal calls",
+              "χειρίστηκα logistics, όχι προσωπικές κλήσεις"
+            )
+          }
+        },
+        frames: {
+          last_seen: {
+            truth: {
+              text: loc(
+                "I last saw Nikos two days earlier at the marina office for a brief logistics check.",
+                "Τον είδα τελευταία φορά δύο μέρες πριν στο γραφείο της μαρίνας για έναν σύντομο έλεγχο logistics."
+              )
+            },
+            lie: {
+              text: loc(
+                "I saw him that evening near the marina office entrance, briefly.",
+                "Τον είδα εκείνο το βράδυ κοντά στην είσοδο του γραφείου της μαρίνας, για λίγο."
+              )
+            },
+            lie_allowed: true
+          },
+          last_contact: {
+            truth: {
+              text: loc(
+                "I had no direct contact with him; I only handled logistics updates.",
+                "Δεν είχα άμεση επαφή μαζί του· χειρίστηκα μόνο ενημερώσεις logistics."
+              )
+            },
+            lie: {
+              text: loc(
+                "We exchanged a short call about a delivery slot earlier in the day.",
+                "Ανταλλάξαμε μια σύντομη κλήση για ένα slot παράδοσης νωρίτερα την ημέρα."
+              )
+            },
+            lie_allowed: true
+          },
+          alibi_at_time: {
+            truth: {
+              text: loc(
+                "At 7:40 PM I was near the Voss warehouse, checking a late delivery.",
+                "Στις 19:40 ήμουν κοντά στην αποθήκη της Voss, ελέγχοντας μια καθυστερημένη παράδοση."
+              )
+            },
+            lie: {
+              text: loc(
+                "At 7:40 PM I was at the marina office reviewing paperwork.",
+                "Στις 19:40 ήμουν στο γραφείο της μαρίνας, κοιτώντας χαρτιά."
+              )
+            },
+            lie_allowed: true
+          }
+        },
         goals: [loc("get paid"), loc("stay out of custody")],
         secrets: [loc("provided the location for captivity")],
         private_facts: {
@@ -1076,6 +1345,73 @@ const CASE_LIBRARY = [
           "rh-2012-19-55",
           "rh-2012-20-10"
         ],
+        story_pack: {
+          last_seen: {
+            mode: "none",
+            time: "",
+            location_id: "",
+            note: loc(
+              "never met him in person",
+              "δεν τον γνώρισα ποτέ από κοντά"
+            )
+          },
+          last_contact: {
+            mode: "none",
+            time: "",
+            with: loc("Nikos", "τον Νίκο"),
+            note: loc(
+              "only handled drop instructions",
+              "μόνο χειρίστηκα οδηγίες παράδοσης"
+            )
+          }
+        },
+        frames: {
+          last_seen: {
+            truth: {
+              text: loc(
+                "I never met Nikos in person.",
+                "Δεν γνώρισα τον Νίκο από κοντά."
+              )
+            },
+            lie: {
+              text: loc(
+                "I saw him briefly at the seaside road drop point from a distance.",
+                "Τον είδα για λίγο στο σημείο παράδοσης στην παραλιακή, από απόσταση."
+              )
+            },
+            lie_allowed: true
+          },
+          last_contact: {
+            truth: {
+              text: loc(
+                "I had no direct contact with him; I only handled drop instructions.",
+                "Δεν είχα άμεση επαφή μαζί του· χειρίστηκα μόνο οδηγίες παράδοσης."
+              )
+            },
+            lie: {
+              text: loc(
+                "He called once, asking for a location update.",
+                "Με κάλεσε μια φορά για ενημέρωση τοποθεσίας."
+              )
+            },
+            lie_allowed: true
+          },
+          alibi_at_time: {
+            truth: {
+              text: loc(
+                "At 7:40 PM I was in Piraeus on a courier run.",
+                "Στις 19:40 ήμουν στον Πειραιά σε διαδρομή."
+              )
+            },
+            lie: {
+              text: loc(
+                "At 7:40 PM I was near the marina, waiting for a signal.",
+                "Στις 19:40 ήμουν κοντά στη μαρίνα, περιμένοντας σήμα."
+              )
+            },
+            lie_allowed: true
+          }
+        },
         goals: [loc("avoid charges"), loc("distance himself")],
         secrets: [loc("handled the burner phone")],
         private_facts: {
@@ -1157,6 +1493,73 @@ const CASE_LIBRARY = [
           "rh-2012-19-55",
           "rh-2012-20-10"
         ],
+        story_pack: {
+          last_seen: {
+            mode: "none",
+            time: "",
+            location_id: "",
+            note: loc(
+              "arrived after he was gone; only inspected the car",
+              "έφτασα αφού είχε φύγει· μόνο εξέτασα το αυτοκίνητο"
+            )
+          },
+          last_contact: {
+            mode: "none",
+            time: "",
+            with: loc("Nikos", "τον Νίκο"),
+            note: loc(
+              "worked through Elena, not directly",
+              "δούλεψα μέσω της Elena, όχι απευθείας"
+            )
+          }
+        },
+        frames: {
+          last_seen: {
+            truth: {
+              text: loc(
+                "I never saw Nikos that night; I arrived after he was gone and inspected the car.",
+                "Δεν είδα τον Νίκο εκείνο το βράδυ· έφτασα αφού είχε φύγει και εξέτασα το αυτοκίνητο."
+              )
+            },
+            lie: {
+              text: loc(
+                "I caught a glimpse of him near the marina office entrance earlier.",
+                "Τον είδα φευγαλέα κοντά στην είσοδο του γραφείου της μαρίνας νωρίτερα."
+              )
+            },
+            lie_allowed: true
+          },
+          last_contact: {
+            truth: {
+              text: loc(
+                "No direct contact; I worked through Elena.",
+                "Καμία άμεση επαφή· δούλεψα μέσω της Elena."
+              )
+            },
+            lie: {
+              text: loc(
+                "He sent a quick message asking for help.",
+                "Έστειλε ένα σύντομο μήνυμα ζητώντας βοήθεια."
+              )
+            },
+            lie_allowed: true
+          },
+          alibi_at_time: {
+            truth: {
+              text: loc(
+                "At 7:40 PM I was still in transit, heading toward the marina.",
+                "Στις 19:40 ήμουν ακόμη καθ' οδόν προς τη μαρίνα."
+              )
+            },
+            lie: {
+              text: loc(
+                "At 7:40 PM I was already at the marina office.",
+                "Στις 19:40 ήμουν ήδη στο γραφείο της μαρίνας."
+              )
+            },
+            lie_allowed: true
+          }
+        },
         goals: [loc("trace the money trail"), loc("protect her client")],
         secrets: [loc("found blood evidence early")],
         private_facts: {
@@ -2679,7 +3082,7 @@ export function createStateFromCase(caseData) {
     knowledge: Array.isArray(character.knowledge) ? character.knowledge : [],
     memory: normalizeMemory(character.memory || createDefaultMemory())
   }));
-  return {
+  const state = {
     case_id: data.id,
     truth: data.truth,
     public_state: {
@@ -2694,6 +3097,7 @@ export function createStateFromCase(caseData) {
     events: [],
     detective_knowledge: []
   };
+  return enrichStateFromCase(state);
 }
 
 export { CASE_LIBRARY };

@@ -142,7 +142,7 @@ function formatValue(value, language) {
   return getLocalized(value, language);
 }
 
-function buildCharacterPrompt({ character, language, publicState, allCharacters }) {
+function buildCharacterPrompt({ character, language, publicState, allCharacters, answerFrame }) {
   const role = getLocalized(character.role, language);
   const psycho = (character.psycho || []).map((item) => `- ${getLocalized(item, language)}`).join("\n");
   const goals = (character.goals || []).map((item) => `- ${getLocalized(item, language)}`).join("\n");
@@ -220,6 +220,22 @@ function buildCharacterPrompt({ character, language, publicState, allCharacters 
       .map((loc) => [loc.id, formatValue(loc.name, language)])
   );
 
+  const victimDossier = publicState?.victim_dossier || {};
+  const victimBio = formatValue(victimDossier.bio, language);
+  const victimLastSeen = formatValue(victimDossier.last_seen, language);
+  const victimRel = formatValue(victimDossier.relationship_summary, language);
+  const policeCallTime = formatValue(publicState?.police_call_time, language);
+
+  const storyPack = character.story_pack || {};
+  const storyLastSeenTime = formatValue(storyPack.last_seen?.time, language);
+  const storyLastSeenLoc = storyPack.last_seen?.location_id
+    ? locationById.get(storyPack.last_seen.location_id)
+    : "";
+  const storyLastSeenNote = formatValue(storyPack.last_seen?.note, language);
+  const storyLastContactTime = formatValue(storyPack.last_contact?.time, language);
+  const storyLastContactWith = formatValue(storyPack.last_contact?.with, language);
+  const storyLastContactNote = formatValue(storyPack.last_contact?.note, language);
+
   const historyList = Array.isArray(publicState?.relationship_history)
     ? publicState.relationship_history
     : [];
@@ -260,6 +276,14 @@ function buildCharacterPrompt({ character, language, publicState, allCharacters 
 
   const languageName = language === "el" ? "Greek" : "English";
 
+  const answerFrameText = answerFrame?.text ? answerFrame.text : "";
+  const answerFrameKey = answerFrame?.key ? answerFrame.key : "";
+  const answerFrameSection = answerFrameText
+    ? ["Answer frame (must use this content):", `- ${answerFrameKey || "direct"}`, `- ${answerFrameText}`]
+        .filter(Boolean)
+        .join("\n")
+    : "";
+
   return [
     `You are ${character.name}, the ${role}.`,
     `Respond in ${languageName}.`,
@@ -298,6 +322,18 @@ function buildCharacterPrompt({ character, language, publicState, allCharacters 
     relationshipLines || "-",
     "Known relationship history timeline:",
     historyLines || "-",
+    "Story anchors (use when asked):",
+    storyPack?.last_seen
+      ? `- last_seen: ${[storyLastSeenTime, storyLastSeenLoc, storyLastSeenNote]
+          .filter(Boolean)
+          .join(" | ") || "-"}`
+      : "- last_seen: -",
+    storyPack?.last_contact
+      ? `- last_contact: ${[storyLastContactTime, storyLastContactWith, storyLastContactNote]
+          .filter(Boolean)
+          .join(" | ") || "-"}`
+      : "- last_contact: -",
+    answerFrameSection ? answerFrameSection : "",
     "Your commitments (do not contradict):",
     commitments || "-",
     "Your recent claims (unverified unless evidence listed):",
@@ -415,13 +451,26 @@ async function generateCharacterResponseMock({ character, message, language, all
   return response;
 }
 
+function applyAnswerFrame(response, answerFrame) {
+  if (!answerFrame || !answerFrame.text) return response;
+  const dialogue = response.dialogue || "";
+  const lower = dialogue.toLowerCase();
+  const anchors = Array.isArray(answerFrame.anchors) ? answerFrame.anchors : [];
+  const hasAnchor = anchors.some((anchor) => anchor && lower.includes(String(anchor).toLowerCase()));
+  if (answerFrame.force || !hasAnchor) {
+    return { ...response, dialogue: answerFrame.text };
+  }
+  return response;
+}
+
 export async function generateCharacterResponse({
   character,
   message,
   language,
   allCharacters,
   publicState,
-  modelMode
+  modelMode,
+  answerFrame
 }) {
   const lang = normalizeLanguage(language);
   const client = getOpenAIClient();
@@ -442,7 +491,7 @@ export async function generateCharacterResponse({
       model_mode: mode,
       mock: true
     };
-    return response;
+    return applyAnswerFrame(response, answerFrame);
   }
 
   const model = selectedModel;
@@ -450,7 +499,8 @@ export async function generateCharacterResponse({
     character,
     language: lang,
     publicState,
-    allCharacters
+    allCharacters,
+    answerFrame
   });
 
   const response = await client.responses.create({
@@ -499,7 +549,7 @@ export async function generateCharacterResponse({
       model_mode: mode,
       mock: true
     };
-    return fallback;
+    return applyAnswerFrame(fallback, answerFrame);
   }
   const sanitized = sanitizeResponse(parsed);
   sanitized._meta = {
@@ -508,7 +558,7 @@ export async function generateCharacterResponse({
     model_mode: mode,
     mock: false
   };
-  return sanitized;
+  return applyAnswerFrame(sanitized, answerFrame);
 }
 
 function clampNumber(value, min, max) {
@@ -753,8 +803,3 @@ export function extractEvidenceFromClaims(claims) {
   }
   return evidence;
 }
-  const victimDossier = publicState?.victim_dossier || {};
-  const victimBio = formatValue(victimDossier.bio, language);
-  const victimLastSeen = formatValue(victimDossier.last_seen, language);
-  const victimRel = formatValue(victimDossier.relationship_summary, language);
-  const policeCallTime = formatValue(publicState?.police_call_time, language);

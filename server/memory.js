@@ -48,6 +48,8 @@ export function createDefaultMemory() {
   return {
     affect: normalizeAffect(),
     heat: DEFAULT_HEAT,
+    answer_frames: {},
+    last_question: "",
     commitments: [],
     self_claims: [],
     heard_claims: [],
@@ -64,6 +66,10 @@ export function normalizeMemory(input = {}) {
       0,
       100
     ),
+    answer_frames: memory.answer_frames && typeof memory.answer_frames === "object"
+      ? memory.answer_frames
+      : {},
+    last_question: typeof memory.last_question === "string" ? memory.last_question : "",
     commitments: normalizeList(memory.commitments),
     self_claims: normalizeList(memory.self_claims),
     heard_claims: normalizeList(memory.heard_claims),

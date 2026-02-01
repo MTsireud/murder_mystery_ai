@@ -7,6 +7,7 @@ const DICT = {
     public_accusation: "{name} points to {target}",
     tension_evasive: "{name} is evasive",
     tension_suspect: "{name} is drawing suspicion",
+    tension_lie: "{name} is likely hiding details",
     detective_said: "Detective said: {text}",
     character_said: "{name} said: {text}",
     no_one_specific: "no one specific"
@@ -19,6 +20,7 @@ const DICT = {
     public_accusation: "{name} δείχνει προς {target}",
     tension_evasive: "{name} αποφεύγει να απαντήσει",
     tension_suspect: "{name} μπαίνει στο στόχαστρο",
+    tension_lie: "{name} πιθανόν κρύβει λεπτομέρειες",
     detective_said: "Ο ντετέκτιβ είπε: {text}",
     character_said: "{name} είπε: {text}",
     no_one_specific: "κανέναν συγκεκριμένο"
