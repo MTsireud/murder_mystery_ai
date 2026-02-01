@@ -284,7 +284,7 @@ const CASE_LIBRARY = [
       {
         id: "dane",
         name: "Dane Holt",
-        role: loc("Friend and Accomplice"),
+        role: loc("Close Friend"),
         psycho: [
           loc("anxious"),
           loc("loyal"),
@@ -453,7 +453,7 @@ const CASE_LIBRARY = [
       case_time: loc("7:40 PM"),
       case_location: loc("Glyfada parking lot, Athens"),
       case_briefing: loc(
-        "Nikos Asteri vanished after a meeting by the marina. A family associate is managing ransom instructions while urging the family to avoid police, and the timeline is already blurred by fear. You need to map the relationships and money trail before the trail goes cold."
+        "Nikos Asteri vanished after a meeting by the marina. A close contact is relaying ransom instructions while urging the family to avoid police, and the timeline is already blurred by fear. You need to map the relationships and money trail before the trail goes cold."
       ),
       case_briefing_source: "library",
       time_minutes: 0,
@@ -639,7 +639,7 @@ const CASE_LIBRARY = [
     headline: loc("A public editor is shot outside his office."),
     synopsis: loc("A daylight attack fractures into a web of warnings and unanswered questions."),
     plot: loc(
-      "A prominent editor is attacked in daylight after receiving threats. The shooter is detained quickly, but questions about who steered him and who ignored warnings ripple through the newsroom."
+      "A prominent editor is attacked in daylight after receiving threats. A suspect is briefly detained, but questions about who steered the attack and who ignored warnings ripple through the newsroom."
     ),
     solution: loc(
       "A young shooter was directed by an older organizer who tracked the victim's routine, exploiting security gaps despite known threats."
@@ -662,7 +662,7 @@ const CASE_LIBRARY = [
       case_time: loc("3:15 PM"),
       case_location: loc("Istanbul newspaper office steps"),
       case_briefing: loc(
-        "Editor Arda Kir was shot outside his office after receiving public threats. The shooter was detained quickly, but staff and police disagree on how much was known beforehand. You need to untangle who warned whom and who arranged the shooter's path."
+        "Editor Arda Kir was attacked outside his office after receiving public threats. A suspect was briefly detained, but staff and police disagree on how much was known beforehand. You need to untangle who warned whom and who may have enabled the attack."
       ),
       case_briefing_source: "library",
       time_minutes: 0,
@@ -702,7 +702,7 @@ const CASE_LIBRARY = [
       {
         id: "seref",
         name: "Seref Altun",
-        role: loc("Organizer"),
+        role: loc("Local Contact"),
         psycho: [
           loc("calm"),
           loc("calculating"),
@@ -1055,7 +1055,7 @@ const CASE_LIBRARY = [
     title: loc("Studio After Dark"),
     subtitle: loc("Rio de Janeiro  -  1992"),
     headline: loc("A telenovela star dies in a parking lot."),
-    synopsis: loc("A closed set, jealous careers, and a partner who covered the exit."),
+    synopsis: loc("A closed set, jealous careers, and a partner with a separate timeline."),
     plot: loc(
       "A rising actress is found dead after leaving a late shoot. Cast and crew are locked on set while rivalries and contracts surface behind the scenes."
     ),
@@ -1475,7 +1475,7 @@ const CASE_LIBRARY = [
     headline: loc("A regional official is killed at home."),
     synopsis: loc("A late-night killing raises questions about threats and access."),
     plot: loc(
-      "A regional official is shot on his terrace after months of threats. Investigators find a gunman with extremist ties, but the weapon trail suggests he wasn't alone."
+      "A regional official is shot on his terrace after months of threats. Investigators trace a weapon trail and a pattern of intimidation, but the logistics suggest more than one person may have helped."
     ),
     solution: loc(
       "The shooter acted on extremist ideology and accessed a weapon through a close associate, while others downplayed their involvement."
@@ -1498,7 +1498,7 @@ const CASE_LIBRARY = [
       case_time: loc("11:25 PM"),
       case_location: loc("Kassel district terrace"),
       case_briefing: loc(
-        "Lukas Becker was shot on his terrace late at night after months of threats. A suspect with extremist ties is in custody, but the weapon trail and logistics raise questions about assistance. You need to trace who enabled the attack."
+        "Lukas Becker was shot on his terrace late at night after months of threats. Investigators are piecing together a weapon trail and a long list of warnings. You need to trace who may have enabled the attack."
       ),
       case_briefing_source: "library",
       time_minutes: 0,
@@ -1893,7 +1893,7 @@ const CASE_LIBRARY = [
     headline: loc("A string of sudden deaths raises questions."),
     synopsis: loc("A pattern emerges when insurance files and dating records align."),
     plot: loc(
-      "A wealthy retiree dies suddenly after a short relationship. Investigators notice similar cases linked to the same matchmaker, raising the question of a single orchestrator."
+      "A wealthy retiree dies suddenly after a short relationship. Investigators notice similar cases linked to the same matchmaker, raising the question of a deliberate pattern."
     ),
     solution: loc(
       "The matchmaker used poisoned drinks to kill for insurance payouts, masking her pattern through quick marriages and careful alibis."
