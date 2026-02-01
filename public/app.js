@@ -623,29 +623,6 @@ function appendWatsonMessage(text, type) {
   appendMessage(text, type);
 }
 
-function buildCaseBriefingText() {
-  if (!appState.publicState) return "";
-  const time = appState.publicState.case_time || "-";
-  const location = appState.publicState.case_location || "-";
-  const briefing = appState.publicState.case_briefing || "";
-  const lines = [
-    I18N.t(appState.language, "caseBriefingTitle"),
-    I18N.t(appState.language, "caseBriefingTime", { time }),
-    I18N.t(appState.language, "caseBriefingLocation", { location }),
-    "",
-    briefing
-  ];
-  return lines.filter(Boolean).join("\n");
-}
-
-function appendCaseBriefing({ force = false } = {}) {
-  if (!appState.publicState) return;
-  if (!force && chatLogEl.childElementCount > 0) return;
-  const text = buildCaseBriefingText();
-  if (!text) return;
-  appendWatsonMessage(text, "watson");
-}
-
 function renderCaseHeader() {
   const titleEl = document.querySelector("[data-i18n=\"caseTitle\"]");
   const subtitleEl = document.querySelector("[data-i18n=\"caseSubtitle\"]");
@@ -659,25 +636,87 @@ function renderCaseHeader() {
   document.title = title;
 }
 
+function getLocalizedField(value) {
+  if (!value) return "";
+  if (typeof value === "string") return value;
+  return value[appState.language] || value.en || "";
+}
+
 function renderCaseIntro() {
   const introEl = document.getElementById("caseIntro");
   if (!introEl || !appState.publicState) return;
-  const sections = appState.publicState.case_intro?.[appState.language] || [];
-  introEl.innerHTML = sections
-    .map(
-      ({ title, lines }) =>
-        `<div class="intro-section"><h4>${title || ""}</h4>${(lines || [])
-          .map((line) => `<p>${line}</p>`)
-          .join("")}</div>`
-    )
-    .join("");
+  const state = appState.publicState;
+  const snapshot = [
+    {
+      label: I18N.t(appState.language, "caseIntroVictim"),
+      value: [
+        getLocalizedField(state.victim_name),
+        getLocalizedField(state.victim_role)
+      ]
+        .filter(Boolean)
+        .join(" — ")
+    },
+    {
+      label: I18N.t(appState.language, "caseIntroScene"),
+      value: [
+        getLocalizedField(state.case_location),
+        getLocalizedField(state.case_time)
+      ]
+        .filter(Boolean)
+        .join(" · ")
+    },
+    {
+      label: I18N.t(appState.language, "caseIntroPolice"),
+      value: getLocalizedField(state.police_call_time)
+    }
+  ].filter((item) => item.value);
+
+  const reason = getLocalizedField(state.case_intro_reason) || getLocalizedField(state.case_briefing);
+  const social = getLocalizedField(state.social_notes);
+  const recentHistory = (state.relationship_history || [])
+    .slice(0, 3)
+    .map((entry) => {
+      const time = getLocalizedField(entry.time);
+      const event = getLocalizedField(entry.event);
+      return [time, event].filter(Boolean).join(" — ");
+    })
+    .filter(Boolean);
+
+  introEl.innerHTML = `
+    <div class="intro-grid">
+      <article class="intro-card">
+        <h4>${I18N.t(appState.language, "caseIntroSnapshot")}</h4>
+        ${snapshot
+          .map(
+            (item) =>
+              `<p class="intro-meta"><span class="intro-meta-label">${item.label}</span>${item.value}</p>`
+          )
+          .join("")}
+      </article>
+      <article class="intro-card">
+        <h4>${I18N.t(appState.language, "caseIntroReason")}</h4>
+        <p>${reason || I18N.t(appState.language, "caseIntroNoReason")}</p>
+        ${social ? `<p class="intro-meta small">${social}</p>` : ""}
+      </article>
+      <article class="intro-card">
+        <h4>${I18N.t(appState.language, "caseIntroHistory")}</h4>
+        ${
+          recentHistory.length
+            ? `<ul class="intro-history">${recentHistory.map((line) => `<li>${line}</li>`).join("")}</ul>`
+            : `<p>${I18N.t(appState.language, "caseIntroHistoryEmpty")}</p>`
+        }
+      </article>
+    </div>
+  `;
 }
 
-function renderCaseChatLog({ forceBriefing = false } = {}) {
+function renderCaseChatLog() {
   const events = appState.clientState?.events || [];
   chatLogEl.innerHTML = "";
-  appendCaseBriefing({ force: forceBriefing });
-  if (!Array.isArray(events) || events.length === 0) return;
+  if (!Array.isArray(events) || events.length === 0) {
+    appendMessage(I18N.t(appState.language, "caseChatIntro"), "system");
+    return;
+  }
   events.forEach((event) => {
     if (!event || typeof event.content !== "string") return;
     if (event.type === "detective_message") {
@@ -701,11 +740,11 @@ function renderWatsonChatLog() {
   });
 }
 
-function renderChatLog({ forceBriefing = false } = {}) {
+function renderChatLog() {
   if (appState.chatMode === "watson") {
     renderWatsonChatLog();
   } else {
-    renderCaseChatLog({ forceBriefing });
+    renderCaseChatLog();
   }
 }
 
@@ -893,7 +932,7 @@ function setChatMode(mode) {
     chatTabWatson.classList.toggle("active", nextMode === "watson");
   }
   messageInput.placeholder = t(nextMode === "watson" ? "watsonPlaceholder" : "placeholder");
-  renderChatLog({ forceBriefing: true });
+  renderChatLog();
 }
 
 function getSkillPriority(skill, metrics) {
@@ -1385,13 +1424,9 @@ function applyState(data, { clearChat = false, rehydrateChat = false } = {}) {
   renderCaseHeader();
   renderCaseIntro();
   if (rehydrateChat) {
-    renderChatLog({ forceBriefing: true });
+    renderChatLog();
   } else if (clearChat) {
-    if (appState.chatMode === "watson") {
-      renderChatLog();
-    } else {
-      appendCaseBriefing({ force: true });
-    }
+    renderChatLog();
   }
   renderCaseSelect();
 }

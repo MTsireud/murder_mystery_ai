@@ -9,14 +9,13 @@
   <body>
     <div class="app">
       <header class="hero">
-        <div>
+        <div class="hero-main">
           <p class="eyebrow" data-i18n="caseFile">Case File</p>
           <h1 data-i18n="caseTitle">Backstage Silence</h1>
           <p class="subtitle" data-i18n="caseSubtitle">Shared-world interrogation simulator</p>
           <p id="caseHeadline" class="headline"></p>
-          <div id="caseIntro" class="case-intro"></div>
         </div>
-        <div class="status">
+        <div class="status hero-status">
           <div class="status-card">
             <span class="label" data-i18n="timeElapsed">Time Elapsed</span>
             <span id="timeElapsed" class="value">0 min</span>
@@ -53,6 +52,7 @@
             </label>
           </div>
         </div>
+        <div id="caseIntro" class="case-intro"></div>
       </header>
 
       <main class="grid">
