@@ -43,6 +43,14 @@
             <span class="label" data-i18n="modelUsed">Model Used</span>
             <span id="modelUsedValue" class="value">-</span>
           </div>
+          <div class="status-card">
+            <span class="label" data-i18n="caseDrawer">Case Drawer</span>
+            <label class="toggle">
+              <input id="skillsToggle" type="checkbox" />
+              <span class="toggle-track"></span>
+              <span class="toggle-label" data-i18n="caseDrawerToggle">Enabled</span>
+            </label>
+          </div>
         </div>
       </header>
 
@@ -50,10 +58,25 @@
         <section class="panel characters">
           <h2 data-i18n="characters">Characters</h2>
           <div id="characterList" class="character-list"></div>
+          <div class="character-divider" data-i18n="caseAdvisors">Advisors</div>
+          <button id="watsonCard" class="character-card watson" type="button" hidden>
+            <div class="character-meta">
+              <div class="character-name" data-i18n="watsonName">Watson</div>
+              <div class="character-role" data-i18n="watsonRole">Analyst</div>
+            </div>
+          </button>
           <button id="resetBtn" class="ghost" data-i18n="resetCase">Reset Case</button>
         </section>
 
         <section class="panel chat">
+          <div class="chat-tabs">
+            <button id="chatTabCase" class="chat-tab active" type="button" data-i18n="chatTabCase">
+              Interrogation
+            </button>
+            <button id="chatTabWatson" class="chat-tab" type="button" data-i18n="chatTabWatson" hidden>
+              Watson
+            </button>
+          </div>
           <div id="chatLog" class="chat-log"></div>
           <form id="chatForm" class="composer">
             <input
@@ -116,6 +139,149 @@
         </section>
       </main>
     </div>
+
+    <button id="skillsDrawerTab" class="drawer-tab" type="button" data-i18n="caseDrawerTab" hidden>
+      Case Drawer
+    </button>
+
+    <aside id="skillsDrawer" class="skills-drawer" aria-hidden="true" hidden>
+      <div class="drawer-inner">
+        <div class="drawer-header">
+          <div>
+            <p class="eyebrow" data-i18n="caseDrawerEyebrow">Case Drawer</p>
+            <h2 data-i18n="caseDrawerTitle">Investigation Aids</h2>
+          </div>
+          <button id="skillsCloseBtn" class="drawer-close" type="button" data-i18n="close">
+            Close
+          </button>
+        </div>
+
+        <div class="drawer-section">
+          <div class="drawer-section-header">
+            <h3 data-i18n="caseBoard">Case Board</h3>
+          </div>
+          <div class="drawer-widgets">
+            <section class="drawer-widget">
+              <div class="widget-header">
+                <h4 data-i18n="relationshipTracker">Relationship Tracker</h4>
+                <span id="relationshipCount" class="widget-count">0</span>
+              </div>
+              <ul id="relationshipList" class="widget-list"></ul>
+              <button
+                class="widget-action"
+                type="button"
+                data-skill-target="relationship-mapping"
+                data-i18n="skillsWidgetRelationship"
+              >
+                Map a link
+              </button>
+            </section>
+
+            <section class="drawer-widget">
+              <div class="widget-header">
+                <h4 data-i18n="timelineStrip">Timeline Strip</h4>
+                <span id="timelineCount" class="widget-count">0</span>
+              </div>
+              <ul id="timelineList" class="widget-list"></ul>
+              <button
+                class="widget-action"
+                type="button"
+                data-skill-target="build-timeline"
+                data-i18n="skillsWidgetTimeline"
+              >
+                Fill a gap
+              </button>
+            </section>
+
+            <section class="drawer-widget">
+              <div class="widget-header">
+                <h4 data-i18n="evidenceLocker">Evidence Locker</h4>
+                <span id="evidenceCount" class="widget-count">0</span>
+              </div>
+              <ul id="evidenceLockerList" class="widget-list"></ul>
+              <button
+                class="widget-action"
+                type="button"
+                data-skill-target="strategic-evidence"
+                data-i18n="skillsWidgetEvidence"
+              >
+                Review evidence
+              </button>
+            </section>
+
+            <section class="drawer-widget">
+              <div class="widget-header">
+                <h4 data-i18n="contradictionLedger">Contradiction Ledger</h4>
+                <span id="contradictionCount" class="widget-count">0</span>
+              </div>
+              <ul id="contradictionList" class="widget-list"></ul>
+              <button
+                class="widget-action"
+                type="button"
+                data-skill-target="contradiction-press"
+                data-i18n="skillsWidgetContradiction"
+              >
+                Resolve a conflict
+              </button>
+            </section>
+          </div>
+        </div>
+
+        <div class="drawer-section">
+          <div class="drawer-section-header">
+            <h3 data-i18n="watsonTitle">Watson</h3>
+          </div>
+          <div class="drawer-controls">
+            <label class="control">
+              <span data-i18n="watsonFrequency">Frequency</span>
+              <select id="watsonFrequency" class="language-select">
+                <option value="off" data-i18n="watsonOff">Off</option>
+                <option value="rare" data-i18n="watsonRare">Rare</option>
+                <option value="normal" data-i18n="watsonNormal">Normal</option>
+                <option value="high" data-i18n="watsonHigh">High</option>
+              </select>
+            </label>
+            <label class="control">
+              <span data-i18n="watsonStyle">Style</span>
+              <select id="watsonStyle" class="language-select">
+                <option value="questions" data-i18n="watsonStyleQuestions">Questions only</option>
+                <option value="hypothesis" data-i18n="watsonStyleHypothesis">Hypothesis + test</option>
+              </select>
+            </label>
+            <label class="control">
+              <span data-i18n="watsonQuality">Quality</span>
+              <div class="range-row">
+                <span data-i18n="watsonChaotic">Chaotic</span>
+                <input id="watsonQuality" type="range" min="0" max="100" value="70" />
+                <span data-i18n="watsonSharp">Sharp</span>
+              </div>
+            </label>
+          </div>
+          <div id="watsonSuggestion" class="watson-suggestion" hidden>
+            <span class="watson-label" data-i18n="watsonSuggestion">Suggestion</span>
+            <button id="watsonChip" class="watson-chip" type="button"></button>
+          </div>
+          <p id="watsonEmpty" class="watson-empty" data-i18n="watsonNoSuggestion">
+            No suggestion right now.
+          </p>
+        </div>
+
+        <div class="drawer-section">
+          <div class="drawer-section-header skills-toolbar">
+            <div>
+              <h3 data-i18n="skillsTitle">Skills</h3>
+              <span class="section-note" data-i18n="skillsNote">
+                Optional tools that turn chatter into evidence.
+              </span>
+            </div>
+            <button id="skillsViewToggle" class="skills-view-toggle" type="button" data-i18n="skillsViewAll">
+              See all skills
+            </button>
+          </div>
+          <div id="skillsCards" class="skills-cards"></div>
+        </div>
+      </div>
+    </aside>
 
     <script src="i18n.js"></script>
     <script src="app.js"></script>

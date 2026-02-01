@@ -387,6 +387,237 @@ export async function generateCharacterResponse({
   return sanitized;
 }
 
+function clampNumber(value, min, max) {
+  if (!Number.isFinite(value)) return min;
+  return Math.min(Math.max(value, min), max);
+}
+
+function normalizeWatsonSettings(settings = {}) {
+  const frequency = String(settings.frequency || "normal").toLowerCase();
+  const style = String(settings.style || "questions").toLowerCase();
+  const quality = clampNumber(Number(settings.quality ?? 70), 0, 100);
+  return {
+    frequency: ["off", "rare", "normal", "high"].includes(frequency) ? frequency : "normal",
+    style: ["questions", "hypothesis"].includes(style) ? style : "questions",
+    quality
+  };
+}
+
+function buildWatsonPrompt({
+  language,
+  publicState,
+  allCharacters,
+  boardState,
+  tools,
+  settings
+}) {
+  const lang = normalizeLanguage(language);
+  const languageName = lang === "el" ? "Greek" : "English";
+  const safeTools = Array.isArray(tools) ? tools.slice(0, 8) : [];
+  const safeBoard = boardState || {};
+  const toolLines = safeTools.length
+    ? safeTools
+        .map((tool) => {
+          const summary = tool.summary ? ` - ${tool.summary}` : "";
+          const prompt = tool.prompt ? ` | Prompt: ${tool.prompt}` : "";
+          return `- ${tool.name} (Output: ${tool.output})${summary}${prompt}`;
+        })
+        .join("\n")
+    : "- Build Timeline\n- Relationship Mapping\n- Alibi Lock\n- Motive Probe\n- Strategic Use of Evidence\n- Contradiction Press\n- Theory Builder";
+
+  const anchors = Array.isArray(safeBoard.anchors) ? safeBoard.anchors.slice(0, 6) : [];
+  const gaps = Array.isArray(safeBoard.timeline_gaps) ? safeBoard.timeline_gaps.slice(0, 4) : [];
+  const evidence = Array.isArray(safeBoard.evidence) ? safeBoard.evidence.slice(0, 6) : [];
+  const contradictions = Array.isArray(safeBoard.contradictions)
+    ? safeBoard.contradictions.slice(0, 4)
+    : [];
+  const relationships = Array.isArray(safeBoard.relationships)
+    ? safeBoard.relationships.slice(0, 4)
+    : [];
+
+  const anchorLines = anchors.length
+    ? anchors
+        .map((item) => `${item.label || "-"} (${item.speaker || "unknown"})`)
+        .join(", ")
+    : "-";
+  const gapLines = gaps.length ? gaps.map((item) => item.label || "-").join(", ") : "-";
+  const evidenceLines = evidence.length ? evidence.join(", ") : "-";
+  const contradictionLines = contradictions.length
+    ? contradictions.map((item) => item.text || "-").join(" | ")
+    : "-";
+  const relationshipLines = relationships.length
+    ? relationships
+        .map((item) => `${item.from} <-> ${item.to} (${item.type || "link"})`)
+        .join(" | ")
+    : "-";
+
+  const knownCharacters = (allCharacters || [])
+    .map((character) => `${character.name} (${getLocalized(character.role, lang)})`)
+    .join(", ");
+
+  const settingsLine = `Frequency: ${settings.frequency}. Style: ${settings.style}. Quality: ${settings.quality}.`;
+  let qualityLine = "Tone: sharp, clear, evidence-weighted.";
+  if (settings.quality < 35) {
+    qualityLine = "Tone: chaotic, playful, clearly label hunches.";
+  } else if (settings.quality < 70) {
+    qualityLine = "Tone: balanced, curious, a little playful.";
+  }
+
+  let toolGuidance = "Suggest 1 tool when it helps the user move forward.";
+  if (settings.frequency === "off") {
+    toolGuidance = "Only suggest tools if the user asks for help choosing one.";
+  } else if (settings.frequency === "rare") {
+    toolGuidance = "Suggest a tool only when there is a clear gap or conflict.";
+  } else if (settings.frequency === "high") {
+    toolGuidance = "Suggest up to 2 tools and a concrete next test.";
+  }
+
+  let styleGuidance = "Ask 1 short question at the end.";
+  if (settings.style === "hypothesis") {
+    styleGuidance =
+      "Offer 1 hypothesis plus 1 test. End with a question that checks the test.";
+  }
+
+  return [
+    "You are Watson, an investigative advisor.",
+    `Respond in ${languageName}.`,
+    "Be helpful, patient, joyful, giddy, and a little goofy. Stay respectful.",
+    "Never claim to know the real solution. Use only the case snapshot and conversation.",
+    "Do not reveal hidden truth or private facts. Treat all claims as uncertain.",
+    "If the user rejects an idea, acknowledge it and do not repeat that idea.",
+    "Keep the chat in context. Refer to recent user messages when useful.",
+    `${settingsLine}`,
+    `${qualityLine}`,
+    `${toolGuidance}`,
+    `${styleGuidance}`,
+    "Keep replies concise (2-5 sentences).",
+    "",
+    "Case snapshot:",
+    `- Title: ${getLocalized(publicState?.case_title, lang) || "-"}`,
+    `- Time: ${getLocalized(publicState?.case_time, lang) || "-"}`,
+    `- Location: ${getLocalized(publicState?.case_location, lang) || "-"}`,
+    `- Victim: ${getLocalized(publicState?.victim_name, lang) || "-"}`,
+    `- Briefing: ${getLocalized(publicState?.case_briefing, lang) || "-"}`,
+    `- Evidence: ${evidenceLines}`,
+    `- Timeline anchors: ${anchorLines}`,
+    `- Timeline gaps: ${gapLines}`,
+    `- Contradictions: ${contradictionLines}`,
+    `- Relationships: ${relationshipLines}`,
+    `- People: ${knownCharacters || "-"}`,
+    "",
+    "Available tools:",
+    toolLines,
+    "",
+    "When you recommend a tool, name it exactly and give one concrete prompt."
+  ].join("\n");
+}
+
+function buildWatsonHistory(history = []) {
+  if (!Array.isArray(history)) return [];
+  return history
+    .slice(-12)
+    .map((entry) => {
+      if (!entry || typeof entry.text !== "string") return null;
+      return {
+        role: entry.type === "watson-user" ? "user" : "assistant",
+        content: entry.text
+      };
+    })
+    .filter(Boolean);
+}
+
+export async function generateWatsonResponse({
+  message,
+  language,
+  publicState,
+  allCharacters,
+  boardState,
+  tools,
+  settings,
+  history
+}) {
+  const lang = normalizeLanguage(language);
+  const client = getOpenAIClient();
+  const normalizedSettings = normalizeWatsonSettings(settings);
+
+  const temperature =
+    normalizedSettings.quality < 35 ? 0.9 : normalizedSettings.quality < 70 ? 0.65 : 0.45;
+
+  if (!client || USE_MOCK) {
+    const fallback = {
+      dialogue:
+        normalizedSettings.style === "hypothesis"
+          ? "Hypothesis: the timeline has a gap. Test: lock who can place each person. Which gap should we probe?"
+          : "We should lock a clean timeline first. Want me to suggest the next question?"
+    };
+    fallback._meta = {
+      model_used: "mock",
+      model_selected: ROUTINE_MODEL,
+      model_mode: "watson",
+      mock: true
+    };
+    return fallback;
+  }
+
+  const prompt = buildWatsonPrompt({
+    language: lang,
+    publicState,
+    allCharacters,
+    boardState,
+    tools,
+    settings: normalizedSettings
+  });
+  try {
+    const response = await client.responses.create({
+      model: ROUTINE_MODEL,
+      input: [
+        { role: "system", content: prompt },
+        ...buildWatsonHistory(history),
+        { role: "user", content: message }
+      ],
+      temperature,
+      max_output_tokens: MAX_OUTPUT_TOKENS
+    });
+
+    const outputText = extractOutputText(response);
+    const dialogue = outputText ? outputText.trim() : "";
+    if (!dialogue) {
+      return {
+        dialogue: "I need a moment to think. Want a quick timeline check next?",
+        _meta: {
+          model_used: ROUTINE_MODEL,
+          model_selected: ROUTINE_MODEL,
+          model_mode: "watson",
+          mock: false
+        }
+      };
+    }
+
+    return {
+      dialogue,
+      _meta: {
+        model_used: ROUTINE_MODEL,
+        model_selected: ROUTINE_MODEL,
+        model_mode: "watson",
+        mock: false
+      }
+    };
+  } catch (error) {
+    return {
+      dialogue:
+        normalizedSettings.style === "hypothesis"
+          ? "My brain fizzled for a second. Want me to try a timeline test instead?"
+          : "I'm having trouble reaching my notes. Want a quick next question instead?",
+      _meta: {
+        model_used: "fallback",
+        model_selected: ROUTINE_MODEL,
+        model_mode: "watson",
+        mock: true
+      }
+    };
+  }
+}
+
 export function extractEvidenceFromClaims(claims) {
   const evidence = [];
   for (const claim of claims) {

@@ -19,6 +19,29 @@ const revealToggle = document.getElementById("revealToggle");
 const checkSolutionBtn = document.getElementById("checkSolutionBtn");
 const solutionResultEl = document.getElementById("solutionResult");
 const caseHeadlineEl = document.getElementById("caseHeadline");
+const chatTabCase = document.getElementById("chatTabCase");
+const chatTabWatson = document.getElementById("chatTabWatson");
+const watsonCard = document.getElementById("watsonCard");
+const skillsToggle = document.getElementById("skillsToggle");
+const skillsDrawer = document.getElementById("skillsDrawer");
+const skillsDrawerTab = document.getElementById("skillsDrawerTab");
+const skillsCloseBtn = document.getElementById("skillsCloseBtn");
+const skillsCardsEl = document.getElementById("skillsCards");
+const skillsViewToggle = document.getElementById("skillsViewToggle");
+const relationshipListEl = document.getElementById("relationshipList");
+const relationshipCountEl = document.getElementById("relationshipCount");
+const timelineListEl = document.getElementById("timelineList");
+const timelineCountEl = document.getElementById("timelineCount");
+const evidenceLockerListEl = document.getElementById("evidenceLockerList");
+const evidenceCountEl = document.getElementById("evidenceCount");
+const contradictionListEl = document.getElementById("contradictionList");
+const contradictionCountEl = document.getElementById("contradictionCount");
+const watsonFrequencySelect = document.getElementById("watsonFrequency");
+const watsonStyleSelect = document.getElementById("watsonStyle");
+const watsonQualityRange = document.getElementById("watsonQuality");
+const watsonSuggestionEl = document.getElementById("watsonSuggestion");
+const watsonChipBtn = document.getElementById("watsonChip");
+const watsonEmptyEl = document.getElementById("watsonEmpty");
 
 const appState = {
   sessionId: null,
@@ -29,8 +52,229 @@ const appState = {
   characters: [],
   publicState: null,
   language: "en",
-  modelMode: "auto"
+  modelMode: "auto",
+  chatMode: "case",
+  watsonLog: [],
+  skillsEnabled: false,
+  skillsDrawerOpen: false,
+  skillsView: "stack",
+  expandedSkillId: null,
+  watsonFrequency: "off",
+  watsonStyle: "questions",
+  watsonQuality: 70
 };
+
+const SKILL_PHASE_LABELS = {
+  early: "skillsPhaseEarly",
+  mid: "skillsPhaseMid",
+  late: "skillsPhaseLate"
+};
+
+const SKILL_BEST_FOR_LABELS = {
+  anyone: "skillsBestForAnyone",
+  witness: "skillsBestForWitness",
+  suspect: "skillsBestForSuspect"
+};
+
+const SKILL_OUTPUT_LABELS = {
+  timeline: "skillsOutputTimeline",
+  relationship: "skillsOutputRelationship",
+  contradiction: "skillsOutputContradiction",
+  motive: "skillsOutputMotive",
+  evidence: "skillsOutputEvidence",
+  theory: "skillsOutputTheory"
+};
+
+const SKILLS = [
+  {
+    id: "build-timeline",
+    nameKey: "skillTimelineName",
+    quipKey: "skillTimelineQuip",
+    whatKey: "skillTimelineWhat",
+    whyKey: "skillTimelineWhy",
+    anchorKey: "skillTimelineAnchor",
+    stepsKeys: ["skillTimelineStep1", "skillTimelineStep2", "skillTimelineStep3"],
+    promptKeys: [
+      "skillTimelinePrompt1",
+      "skillTimelinePrompt2",
+      "skillTimelinePrompt3",
+      "skillTimelinePrompt4"
+    ],
+    criteria: [
+      { key: "skillTimelineCriteria1", check: (metrics) => metrics.timelineAnchors >= 2 },
+      { key: "skillTimelineCriteria2", check: (metrics) => metrics.timelineGaps > 0 }
+    ],
+    suggestionKey: "skillTimelineSuggestion",
+    phase: "early",
+    bestFor: "anyone",
+    output: "timeline",
+    risks: ["riskHeatLow", "riskRapportNeutral"],
+    unlock: () => true,
+    baseOrder: 1
+  },
+  {
+    id: "relationship-mapping",
+    nameKey: "skillRelationshipName",
+    quipKey: "skillRelationshipQuip",
+    whatKey: "skillRelationshipWhat",
+    whyKey: "skillRelationshipWhy",
+    anchorKey: "skillRelationshipAnchor",
+    stepsKeys: ["skillRelationshipStep1", "skillRelationshipStep2", "skillRelationshipStep3"],
+    promptKeys: [
+      "skillRelationshipPrompt1",
+      "skillRelationshipPrompt2",
+      "skillRelationshipPrompt3",
+      "skillRelationshipPrompt4"
+    ],
+    criteria: [
+      { key: "skillRelationshipCriteria1", check: (metrics) => metrics.relationshipLinks > 0 }
+    ],
+    suggestionKey: "skillRelationshipSuggestion",
+    phase: "early",
+    bestFor: "anyone",
+    output: "relationship",
+    risks: ["riskHeatLow", "riskRapportNeutral"],
+    unlock: () => true,
+    baseOrder: 2
+  },
+  {
+    id: "motive-probe",
+    nameKey: "skillMotiveName",
+    quipKey: "skillMotiveQuip",
+    whatKey: "skillMotiveWhat",
+    whyKey: "skillMotiveWhy",
+    anchorKey: "skillMotiveAnchor",
+    stepsKeys: ["skillMotiveStep1", "skillMotiveStep2", "skillMotiveStep3"],
+    promptKeys: [
+      "skillMotivePrompt1",
+      "skillMotivePrompt2",
+      "skillMotivePrompt3",
+      "skillMotivePrompt4"
+    ],
+    criteria: [{ key: "skillMotiveCriteria1", check: (metrics) => metrics.motiveSignals > 0 }],
+    suggestionKey: "skillMotiveSuggestion",
+    phase: "early",
+    bestFor: "suspect",
+    output: "motive",
+    risks: ["riskHeatLow", "riskRapportNeutral"],
+    unlock: () => true,
+    baseOrder: 3
+  },
+  {
+    id: "alibi-lock",
+    nameKey: "skillAlibiName",
+    quipKey: "skillAlibiQuip",
+    whatKey: "skillAlibiWhat",
+    whyKey: "skillAlibiWhy",
+    anchorKey: "skillAlibiAnchor",
+    stepsKeys: ["skillAlibiStep1", "skillAlibiStep2", "skillAlibiStep3"],
+    promptKeys: ["skillAlibiPrompt1", "skillAlibiPrompt2", "skillAlibiPrompt3", "skillAlibiPrompt4"],
+    criteria: [
+      { key: "skillAlibiCriteria1", check: (metrics) => metrics.alibiClaims > 0 }
+    ],
+    suggestionKey: "skillAlibiSuggestion",
+    phase: "mid",
+    bestFor: "suspect",
+    output: "timeline",
+    risks: ["riskHeatMedium", "riskRapportLow"],
+    unlock: (metrics) => metrics.alibiClaims > 0,
+    baseOrder: 4
+  },
+  {
+    id: "cognitive-interview",
+    nameKey: "skillCognitiveName",
+    quipKey: "skillCognitiveQuip",
+    whatKey: "skillCognitiveWhat",
+    whyKey: "skillCognitiveWhy",
+    anchorKey: "skillCognitiveAnchor",
+    stepsKeys: ["skillCognitiveStep1", "skillCognitiveStep2", "skillCognitiveStep3"],
+    promptKeys: [
+      "skillCognitivePrompt1",
+      "skillCognitivePrompt2",
+      "skillCognitivePrompt3",
+      "skillCognitivePrompt4"
+    ],
+    criteria: [
+      { key: "skillCognitiveCriteria1", check: (metrics) => metrics.sensoryPrompts > 0 }
+    ],
+    suggestionKey: "skillCognitiveSuggestion",
+    phase: "mid",
+    bestFor: "witness",
+    output: "evidence",
+    risks: ["riskHeatLow", "riskRapportHigh"],
+    unlock: () => true,
+    baseOrder: 5
+  },
+  {
+    id: "strategic-evidence",
+    nameKey: "skillSUEName",
+    quipKey: "skillSUEQuip",
+    whatKey: "skillSUEWhat",
+    whyKey: "skillSUEWhy",
+    anchorKey: "skillSUEAnchor",
+    stepsKeys: ["skillSUEStep1", "skillSUEStep2", "skillSUEStep3"],
+    promptKeys: ["skillSUEPrompt1", "skillSUEPrompt2", "skillSUEPrompt3", "skillSUEPrompt4"],
+    criteria: [
+      { key: "skillSUECriteria1", check: (metrics) => metrics.evidenceCount >= 2 }
+    ],
+    suggestionKey: "skillSUESuggestion",
+    phase: "mid",
+    bestFor: "suspect",
+    output: "contradiction",
+    risks: ["riskHeatMedium", "riskRapportLow"],
+    unlock: (metrics) => metrics.evidenceCount >= 2,
+    baseOrder: 6
+  },
+  {
+    id: "contradiction-press",
+    nameKey: "skillContradictionName",
+    quipKey: "skillContradictionQuip",
+    whatKey: "skillContradictionWhat",
+    whyKey: "skillContradictionWhy",
+    anchorKey: "skillContradictionAnchor",
+    stepsKeys: [
+      "skillContradictionStep1",
+      "skillContradictionStep2",
+      "skillContradictionStep3"
+    ],
+    promptKeys: [
+      "skillContradictionPrompt1",
+      "skillContradictionPrompt2",
+      "skillContradictionPrompt3",
+      "skillContradictionPrompt4"
+    ],
+    criteria: [
+      { key: "skillContradictionCriteria1", check: (metrics) => metrics.contradictions > 0 }
+    ],
+    suggestionKey: "skillContradictionSuggestion",
+    phase: "late",
+    bestFor: "anyone",
+    output: "contradiction",
+    risks: ["riskHeatHigh", "riskRapportLow"],
+    unlock: (metrics) => metrics.contradictions > 0,
+    baseOrder: 7
+  },
+  {
+    id: "theory-builder",
+    nameKey: "skillTheoryName",
+    quipKey: "skillTheoryQuip",
+    whatKey: "skillTheoryWhat",
+    whyKey: "skillTheoryWhy",
+    anchorKey: "skillTheoryAnchor",
+    stepsKeys: ["skillTheoryStep1", "skillTheoryStep2", "skillTheoryStep3"],
+    promptKeys: ["skillTheoryPrompt1", "skillTheoryPrompt2", "skillTheoryPrompt3", "skillTheoryPrompt4"],
+    criteria: [
+      { key: "skillTheoryCriteria1", check: (metrics) => metrics.evidenceCount >= 2 }
+    ],
+    suggestionKey: "skillTheorySuggestion",
+    phase: "late",
+    bestFor: "anyone",
+    output: "theory",
+    risks: ["riskHeatLow", "riskRapportNeutral"],
+    unlock: (metrics) => metrics.evidenceCount >= 2,
+    baseOrder: 8
+  }
+];
 
 function loadStoredClientState() {
   const raw = localStorage.getItem("clientState");
@@ -70,12 +314,264 @@ function getStoredActiveCharacter(caseId) {
   return map[caseId] || null;
 }
 
+function t(key, vars) {
+  return I18N.t(appState.language, key, vars);
+}
+
+function formatPrompt(template, context) {
+  if (!template) return "";
+  return template
+    .replace(/\{(\w+)\}/g, (_, key) => (key in context ? context[key] : ""))
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function extractTimeAnchors(text) {
+  if (!text) return [];
+  const anchors = [];
+  const seen = new Set();
+  const timeRegex = /\b([01]?\d|2[0-3]):([0-5]\d)\s*(AM|PM)?\b/gi;
+  const shortRegex = /\b(1[0-2]|0?[1-9])\s*(AM|PM)\b/gi;
+  const addAnchor = (match) => {
+    const label = match.trim();
+    const key = label.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    const minutes = timeLabelToMinutes(label);
+    anchors.push({ label, minutes });
+  };
+  let match;
+  while ((match = timeRegex.exec(text))) {
+    addAnchor(match[0]);
+  }
+  while ((match = shortRegex.exec(text))) {
+    addAnchor(match[0]);
+  }
+  return anchors;
+}
+
+function timeLabelToMinutes(label) {
+  if (!label) return null;
+  const match = label.match(/\b([01]?\d|2[0-3])(?::([0-5]\d))?\s*(AM|PM)?\b/i);
+  if (!match) return null;
+  let hours = Number(match[1]);
+  const minutes = Number(match[2] || 0);
+  const meridiem = match[3] ? match[3].toUpperCase() : null;
+  if (meridiem) {
+    if (meridiem === "AM" && hours === 12) hours = 0;
+    if (meridiem === "PM" && hours < 12) hours += 12;
+  }
+  return hours * 60 + minutes;
+}
+
+function uniqueByKey(list, keyFn) {
+  const seen = new Set();
+  return list.filter((item) => {
+    const key = keyFn(item);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function getSpeakerNameForEvent(event) {
+  if (!event) return null;
+  if (event.type === "detective_message") {
+    return t("skillsSpeakerDetective");
+  }
+  if (event.type === "character_response") {
+    const characterId = Array.isArray(event.visibility)
+      ? event.visibility.find((id) => id !== "detective")
+      : null;
+    const character = appState.characters.find((item) => item.id === characterId);
+    return character?.name || t("skillsSpeakerCharacter");
+  }
+  return t("skillsSpeakerUnknown");
+}
+
+function buildSkillsContext(board) {
+  const activeName = appState.characters.find((c) => c.id === appState.activeCharacterId)?.name;
+  const caseTime = appState.publicState?.case_time || t("skillsPlaceholderTime");
+  const location = appState.publicState?.case_location || t("skillsPlaceholderLocation");
+  const victim = appState.publicState?.victim_name || t("skillsPlaceholderVictim");
+  const timeWindow = board.timelineGaps[0]
+    ? `${board.timelineGaps[0].start}-${board.timelineGaps[0].end}`
+    : appState.publicState?.case_time || t("skillsPlaceholderTime");
+  return {
+    name: activeName || t("skillsPlaceholderName"),
+    caseTime,
+    location,
+    victim,
+    timeWindow
+  };
+}
+
+function buildBoardState() {
+  const publicState = appState.publicState || {};
+  const events = Array.isArray(appState.clientState?.events) ? appState.clientState.events : [];
+  const evidence = Array.isArray(publicState.discovered_evidence) ? publicState.discovered_evidence : [];
+  const accusations = Array.isArray(publicState.public_accusations) ? publicState.public_accusations : [];
+  const tensions = Array.isArray(publicState.tensions) ? publicState.tensions : [];
+  const names = appState.characters.map((character) => character.name);
+
+  const anchors = [];
+  const anchorKeys = new Set();
+  const addAnchor = (label, source, speaker) => {
+    if (!label) return;
+    const key = `${label}`.toLowerCase();
+    if (anchorKeys.has(key)) return;
+    anchorKeys.add(key);
+    anchors.push({
+      label,
+      source,
+      speaker,
+      minutes: timeLabelToMinutes(label)
+    });
+  };
+
+  if (publicState.case_time) {
+    addAnchor(publicState.case_time, t("skillsSourceCaseFile"), t("skillsSpeakerCaseFile"));
+  }
+
+  events.forEach((event) => {
+    const speaker = getSpeakerNameForEvent(event);
+    extractTimeAnchors(event.content).forEach((anchor) => {
+      addAnchor(anchor.label, t("skillsSourceConversation"), speaker);
+    });
+  });
+
+  const anchorsSorted = anchors
+    .slice()
+    .sort((a, b) => (a.minutes ?? 0) - (b.minutes ?? 0));
+
+  const gaps = [];
+  for (let i = 1; i < anchorsSorted.length; i += 1) {
+    const prev = anchorsSorted[i - 1];
+    const current = anchorsSorted[i];
+    if (prev.minutes == null || current.minutes == null) continue;
+    const diff = current.minutes - prev.minutes;
+    if (diff >= 15) {
+      gaps.push({
+        label: t("skillsTimelineGapLabel", { start: prev.label, end: current.label }),
+        start: prev.label,
+        end: current.label,
+        minutes: diff
+      });
+    }
+  }
+
+  const relationshipLinks = [];
+  const accusationSeparator = t("skillsAccusationSeparator");
+  const accusationPattern = new RegExp(
+    `^(.+?)\\s+${escapeRegExp(accusationSeparator)}\\s+(.+)$`,
+    "i"
+  );
+  accusations.forEach((accusation) => {
+    const match = accusation.match(accusationPattern);
+    if (!match) return;
+    relationshipLinks.push({
+      from: match[1].trim(),
+      to: match[2].trim(),
+      type: t("relationshipTypeAccusation"),
+      status: t("relationshipStatusClaimed")
+    });
+  });
+
+  events.forEach((event) => {
+    if (!event.content) return;
+    const mentions = names.filter((name) => event.content.includes(name));
+    if (mentions.length < 2) return;
+    for (let i = 0; i < mentions.length - 1; i += 1) {
+      for (let j = i + 1; j < mentions.length; j += 1) {
+        relationshipLinks.push({
+          from: mentions[i],
+          to: mentions[j],
+          type: t("relationshipTypeAssociation"),
+          status: t("relationshipStatusInferred")
+        });
+      }
+    }
+  });
+
+  const relationships = uniqueByKey(relationshipLinks, (link) => `${link.from}|${link.to}|${link.type}`);
+
+  const conflictSignals = [];
+  const conflictRegex = /(conflict|contradict|inconsistent|disagree|doesn\'t match)/i;
+  tensions.forEach((item) => {
+    if (conflictRegex.test(item)) {
+      conflictSignals.push(item);
+    }
+  });
+  events.forEach((event) => {
+    if (conflictRegex.test(event.content || "")) {
+      conflictSignals.push(event.content);
+    }
+  });
+  const contradictions = uniqueByKey(
+    conflictSignals.map((text) => ({ text })),
+    (item) => item.text
+  );
+
+  const alibiRegex = /(alibi|i was|i\'m at)/i;
+  const motiveRegex = /(motive|moved by|because|owed|debt|jealous|fear|wanted)/i;
+  const sensoryRegex = /(saw|heard|smell|noticed|sensed)/i;
+
+  const alibiClaims = events.filter((event) => alibiRegex.test(event.content || "")).length;
+  const motiveSignals = events.filter((event) => motiveRegex.test(event.content || "")).length;
+  const sensoryPrompts = events.filter((event) => sensoryRegex.test(event.content || "")).length;
+
+  return {
+    evidence,
+    accusations,
+    tensions,
+    anchors: anchorsSorted,
+    timelineGaps: gaps,
+    relationships,
+    contradictions,
+    metrics: {
+      evidenceCount: evidence.length,
+      relationshipLinks: relationships.length,
+      timelineAnchors: anchorsSorted.length,
+      timelineGaps: gaps.length,
+      contradictions: contradictions.length,
+      alibiClaims,
+      motiveSignals,
+      sensoryPrompts
+    }
+  };
+}
+
 function appendMessage(text, type) {
   const messageEl = document.createElement("div");
   messageEl.className = `message ${type}`;
   messageEl.textContent = text;
   chatLogEl.appendChild(messageEl);
   chatLogEl.scrollTop = chatLogEl.scrollHeight;
+}
+
+function loadWatsonLog() {
+  const raw = localStorage.getItem("watsonLog");
+  if (!raw) return [];
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function storeWatsonLog() {
+  localStorage.setItem("watsonLog", JSON.stringify(appState.watsonLog));
+}
+
+function appendWatsonMessage(text, type) {
+  appState.watsonLog.push({ text, type });
+  storeWatsonLog();
+  appendMessage(text, type);
 }
 
 function buildCaseBriefingText() {
@@ -114,10 +610,10 @@ function renderCaseHeader() {
   document.title = title;
 }
 
-function hydrateChatLogFromEvents() {
+function renderCaseChatLog({ forceBriefing = false } = {}) {
   const events = appState.clientState?.events || [];
   chatLogEl.innerHTML = "";
-  appendCaseBriefing({ force: true });
+  appendCaseBriefing({ force: forceBriefing });
   if (!Array.isArray(events) || events.length === 0) return;
   events.forEach((event) => {
     if (!event || typeof event.content !== "string") return;
@@ -129,6 +625,25 @@ function hydrateChatLogFromEvents() {
       appendMessage(event.content, "character");
     }
   });
+}
+
+function renderWatsonChatLog() {
+  chatLogEl.innerHTML = "";
+  if (!Array.isArray(appState.watsonLog) || appState.watsonLog.length === 0) {
+    appendMessage(t("watsonChatIntro"), "system");
+    return;
+  }
+  appState.watsonLog.forEach((entry) => {
+    appendMessage(entry.text, entry.type);
+  });
+}
+
+function renderChatLog({ forceBriefing = false } = {}) {
+  if (appState.chatMode === "watson") {
+    renderWatsonChatLog();
+  } else {
+    renderCaseChatLog({ forceBriefing });
+  }
 }
 
 function renderCharacters() {
@@ -170,6 +685,7 @@ function renderCharacters() {
     card.addEventListener("click", () => {
       appState.activeCharacterId = character.id;
       storeActiveCharacter(appState.caseId, character.id);
+      setChatMode("case");
       renderCharacters();
       appendMessage(
         I18N.t(appState.language, "nowSpeaking", { name: character.name }),
@@ -179,6 +695,11 @@ function renderCharacters() {
 
     characterListEl.appendChild(card);
   });
+
+  if (watsonCard) {
+    watsonCard.classList.toggle("active", appState.chatMode === "watson");
+  }
+  renderSkillsUI();
 }
 
 function renderPublicState() {
@@ -201,6 +722,493 @@ function renderPublicState() {
     li.textContent = item;
     tensionsListEl.appendChild(li);
   });
+
+  renderSkillsUI();
+}
+
+function setSkillsFeatureEnabled(enabled) {
+  appState.skillsEnabled = Boolean(enabled);
+  localStorage.setItem("skillsEnabled", appState.skillsEnabled);
+  if (skillsDrawerTab) {
+    skillsDrawerTab.hidden = !appState.skillsEnabled;
+  }
+  if (skillsDrawer) {
+    skillsDrawer.hidden = !appState.skillsEnabled;
+  }
+  if (watsonCard) {
+    watsonCard.hidden = !appState.skillsEnabled;
+  }
+  if (!appState.skillsEnabled) {
+    closeSkillsDrawer();
+    if (chatTabWatson) chatTabWatson.hidden = true;
+    if (appState.chatMode === "watson") {
+      setChatMode("case");
+    }
+  } else if (!appState.skillsDrawerOpen) {
+    closeSkillsDrawer({ persist: false });
+    if (chatTabWatson) chatTabWatson.hidden = false;
+    const board = buildBoardState();
+    const focusSkill = selectWatsonSkill(board.metrics);
+    openSkillsDrawer({ focusSkillId: focusSkill?.id });
+    flashDrawerTab();
+  }
+  renderSkillsUI();
+}
+
+function openSkillsDrawer({ focusSkillId } = {}) {
+  if (!skillsDrawer || !appState.skillsEnabled) return;
+  appState.skillsDrawerOpen = true;
+  localStorage.setItem("skillsDrawerOpen", "true");
+  skillsDrawer.classList.add("open");
+  skillsDrawer.setAttribute("aria-hidden", "false");
+  if (skillsDrawerTab) {
+    skillsDrawerTab.setAttribute("aria-expanded", "true");
+  }
+  if (focusSkillId) {
+    appState.skillsView = "all";
+    appState.expandedSkillId = focusSkillId;
+    renderSkillsUI();
+  }
+  if (focusSkillId) {
+    requestAnimationFrame(() => {
+      const target = skillsDrawer.querySelector(`[data-skill-id="${focusSkillId}"]`);
+      if (!target) return;
+      skillsDrawer.querySelectorAll(".skill-card.highlight").forEach((card) => {
+        card.classList.remove("highlight");
+      });
+      target.classList.add("highlight");
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+}
+
+function closeSkillsDrawer({ persist = true } = {}) {
+  if (!skillsDrawer) return;
+  appState.skillsDrawerOpen = false;
+  if (persist) {
+    localStorage.setItem("skillsDrawerOpen", "false");
+  }
+  skillsDrawer.classList.remove("open");
+  skillsDrawer.setAttribute("aria-hidden", "true");
+  if (skillsDrawerTab) {
+    skillsDrawerTab.setAttribute("aria-expanded", "false");
+  }
+  skillsDrawer.querySelectorAll(".skill-card.highlight").forEach((card) => {
+    card.classList.remove("highlight");
+  });
+}
+
+function toggleSkillsDrawer() {
+  if (!appState.skillsEnabled) return;
+  if (appState.skillsDrawerOpen) {
+    closeSkillsDrawer();
+  } else {
+    openSkillsDrawer();
+  }
+}
+
+let drawerAttentionTimer = null;
+
+function flashDrawerTab() {
+  if (!skillsDrawerTab) return;
+  skillsDrawerTab.classList.add("attention");
+  if (drawerAttentionTimer) {
+    window.clearTimeout(drawerAttentionTimer);
+  }
+  drawerAttentionTimer = window.setTimeout(() => {
+    skillsDrawerTab.classList.remove("attention");
+  }, 6000);
+}
+
+function setChatMode(mode) {
+  const nextMode = mode === "watson" ? "watson" : "case";
+  appState.chatMode = nextMode;
+  if (chatTabCase) {
+    chatTabCase.classList.toggle("active", nextMode === "case");
+  }
+  if (chatTabWatson) {
+    chatTabWatson.classList.toggle("active", nextMode === "watson");
+  }
+  messageInput.placeholder = t(nextMode === "watson" ? "watsonPlaceholder" : "placeholder");
+  renderChatLog({ forceBriefing: true });
+}
+
+function getSkillPriority(skill, metrics) {
+  let priority = skill.baseOrder + 10;
+  if (!skill.unlock(metrics)) {
+    priority += 20;
+  }
+  if (skill.id === "build-timeline" && metrics.timelineAnchors < 2) {
+    priority = 0;
+  }
+  if (skill.id === "relationship-mapping" && metrics.relationshipLinks === 0) {
+    priority = Math.min(priority, 1);
+  }
+  if (skill.id === "contradiction-press" && metrics.contradictions > 0) {
+    priority = Math.min(priority, 2);
+  }
+  if (skill.id === "alibi-lock" && metrics.alibiClaims > 0) {
+    priority = Math.min(priority, 3);
+  }
+  return priority;
+}
+
+function getSkillBadges(skill, metrics) {
+  const badges = [];
+  if (skill.id === "build-timeline") {
+    badges.push({
+      text: `${t("skillsBadgeAnchors")}: ${metrics.timelineAnchors}`,
+      tone: metrics.timelineAnchors < 2 ? "alert" : "neutral"
+    });
+    if (metrics.timelineGaps > 0) {
+      badges.push({ text: t("skillsBadgeGap"), tone: "alert" });
+    }
+  }
+  if (skill.id === "relationship-mapping" && metrics.relationshipLinks === 0) {
+    badges.push({ text: t("skillsBadgeNew"), tone: "good" });
+  }
+  if (skill.id === "alibi-lock" && metrics.relationshipLinks === 0 && metrics.alibiClaims > 0) {
+    badges.push({ text: t("skillsBadgeCorroboratorMissing"), tone: "alert" });
+  }
+  if (skill.id === "strategic-evidence") {
+    badges.push({
+      text: `${t("skillsBadgeEvidence")}: ${metrics.evidenceCount}`,
+      tone: metrics.evidenceCount < 2 ? "alert" : "neutral"
+    });
+  }
+  if (skill.id === "contradiction-press" && metrics.contradictions > 0) {
+    badges.push({
+      text: `${t("skillsBadgeConflicts")}: ${metrics.contradictions}`,
+      tone: "alert"
+    });
+  }
+  return badges;
+}
+
+function renderSkillsBoard(board) {
+  if (!relationshipListEl) return;
+
+  relationshipCountEl.textContent = board.relationships.length;
+  relationshipListEl.innerHTML = "";
+  if (board.relationships.length === 0) {
+    const empty = document.createElement("li");
+    empty.textContent = t("skillsEmptyRelationships");
+    relationshipListEl.appendChild(empty);
+  } else {
+    board.relationships.forEach((link) => {
+      const li = document.createElement("li");
+      li.textContent = `${link.from} <-> ${link.to} - ${link.type} (${link.status})`;
+      relationshipListEl.appendChild(li);
+    });
+  }
+
+  timelineCountEl.textContent = board.anchors.length;
+  timelineListEl.innerHTML = "";
+  if (board.anchors.length === 0) {
+    const empty = document.createElement("li");
+    empty.textContent = t("skillsEmptyTimeline");
+    timelineListEl.appendChild(empty);
+  } else {
+    board.anchors.forEach((anchor) => {
+      const li = document.createElement("li");
+      const source = anchor.source ? ` - ${anchor.source}` : "";
+      const speaker = anchor.speaker ? ` - ${anchor.speaker}` : "";
+      li.textContent = `${anchor.label}${speaker}${source}`;
+      timelineListEl.appendChild(li);
+    });
+  }
+  board.timelineGaps.forEach((gap) => {
+    const li = document.createElement("li");
+    li.classList.add("gap");
+    li.textContent = gap.label;
+    timelineListEl.appendChild(li);
+  });
+
+  evidenceCountEl.textContent = board.evidence.length;
+  evidenceLockerListEl.innerHTML = "";
+  if (board.evidence.length === 0) {
+    const empty = document.createElement("li");
+    empty.textContent = t("skillsEmptyEvidence");
+    evidenceLockerListEl.appendChild(empty);
+  } else {
+    board.evidence.forEach((item) => {
+      const li = document.createElement("li");
+      li.textContent = item;
+      evidenceLockerListEl.appendChild(li);
+    });
+  }
+
+  contradictionCountEl.textContent = board.contradictions.length;
+  contradictionListEl.innerHTML = "";
+  if (board.contradictions.length === 0) {
+    const empty = document.createElement("li");
+    empty.textContent = t("skillsEmptyContradictions");
+    contradictionListEl.appendChild(empty);
+  } else {
+    board.contradictions.forEach((item) => {
+      const li = document.createElement("li");
+      li.textContent = item.text;
+      contradictionListEl.appendChild(li);
+    });
+  }
+}
+
+function renderSkillsCards(metrics, context) {
+  if (!skillsCardsEl) return;
+  skillsCardsEl.innerHTML = "";
+  skillsCardsEl.classList.toggle("stack", appState.skillsView === "stack");
+  const ordered = SKILLS.slice().sort(
+    (a, b) => getSkillPriority(a, metrics) - getSkillPriority(b, metrics)
+  );
+  const visibleSkills =
+    appState.skillsView === "all" ? ordered : ordered.slice(0, 4);
+
+  visibleSkills.forEach((skill) => {
+    const unlocked = skill.unlock(metrics);
+    const card = document.createElement("article");
+    card.className = "skill-card";
+    card.dataset.skillId = skill.id;
+    if (appState.expandedSkillId === skill.id) {
+      card.classList.add("expanded");
+    }
+    if (!unlocked) {
+      card.classList.add("locked");
+    }
+
+    const header = document.createElement("div");
+    header.className = "skill-header";
+
+    const title = document.createElement("div");
+    title.className = "skill-title";
+    title.textContent = t(skill.nameKey);
+
+    const badgesEl = document.createElement("div");
+    badgesEl.className = "skill-badges";
+    if (!unlocked) {
+      const lockedBadge = document.createElement("span");
+      lockedBadge.className = "skill-badge alert";
+      lockedBadge.textContent = t("skillsLocked");
+      badgesEl.appendChild(lockedBadge);
+    }
+    getSkillBadges(skill, metrics).forEach((badge) => {
+      const badgeEl = document.createElement("span");
+      const toneClass = badge.tone === "alert" ? " alert" : badge.tone === "good" ? " good" : "";
+      badgeEl.className = `skill-badge${toneClass}`;
+      badgeEl.textContent = badge.text;
+      badgesEl.appendChild(badgeEl);
+    });
+
+    header.appendChild(title);
+    header.appendChild(badgesEl);
+    card.appendChild(header);
+
+    const meta = document.createElement("div");
+    meta.className = "skill-meta";
+    meta.textContent = `${t(SKILL_PHASE_LABELS[skill.phase])} - ${t("skillsBestForLabel")}: ${t(
+      SKILL_BEST_FOR_LABELS[skill.bestFor]
+    )} - ${t("skillsOutputLabel")}: ${t(SKILL_OUTPUT_LABELS[skill.output])}`;
+    card.appendChild(meta);
+
+    const summary = document.createElement("div");
+    summary.className = "skill-summary";
+    summary.textContent = t(skill.whatKey);
+    card.appendChild(summary);
+
+    const body = document.createElement("div");
+    body.className = "skill-body";
+
+    const quip = document.createElement("div");
+    quip.className = "skill-quip";
+    quip.textContent = t(skill.quipKey);
+    body.appendChild(quip);
+
+    const whySection = document.createElement("div");
+    whySection.className = "skill-section";
+    const whyTitle = document.createElement("h5");
+    whyTitle.textContent = t("skillsWhy");
+    const whyBody = document.createElement("p");
+    whyBody.textContent = t(skill.whyKey);
+    whySection.appendChild(whyTitle);
+    whySection.appendChild(whyBody);
+    body.appendChild(whySection);
+
+    const stepsSection = document.createElement("div");
+    stepsSection.className = "skill-section";
+    const stepsTitle = document.createElement("h5");
+    stepsTitle.textContent = t("skillsSteps");
+    const stepsList = document.createElement("ol");
+    stepsList.className = "skill-steps";
+    skill.stepsKeys.forEach((key) => {
+      const li = document.createElement("li");
+      li.textContent = t(key);
+      stepsList.appendChild(li);
+    });
+    stepsSection.appendChild(stepsTitle);
+    stepsSection.appendChild(stepsList);
+    body.appendChild(stepsSection);
+
+    const promptsSection = document.createElement("div");
+    promptsSection.className = "skill-section";
+    const promptsTitle = document.createElement("h5");
+    promptsTitle.textContent = t("skillsPrompts");
+    const promptsWrap = document.createElement("div");
+    promptsWrap.className = "prompt-chips";
+    skill.promptKeys.forEach((key) => {
+      const button = document.createElement("button");
+      button.className = "prompt-chip";
+      button.type = "button";
+      button.disabled = !unlocked;
+      button.dataset.prompt = formatPrompt(t(key), context);
+      button.textContent = formatPrompt(t(key), context);
+      promptsWrap.appendChild(button);
+    });
+    promptsSection.appendChild(promptsTitle);
+    promptsSection.appendChild(promptsWrap);
+    body.appendChild(promptsSection);
+
+    const criteriaSection = document.createElement("div");
+    criteriaSection.className = "skill-section";
+    const criteriaTitle = document.createElement("h5");
+    criteriaTitle.textContent = t("skillsCriteria");
+    const criteriaList = document.createElement("div");
+    criteriaList.className = "criteria-list";
+    skill.criteria.forEach((criteria) => {
+      const label = document.createElement("label");
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.disabled = true;
+      checkbox.checked = criteria.check(metrics);
+      const span = document.createElement("span");
+      span.textContent = t(criteria.key);
+      label.appendChild(checkbox);
+      label.appendChild(span);
+      criteriaList.appendChild(label);
+    });
+    criteriaSection.appendChild(criteriaTitle);
+    criteriaSection.appendChild(criteriaList);
+    body.appendChild(criteriaSection);
+
+    const riskSection = document.createElement("div");
+    riskSection.className = "skill-section";
+    const riskTitle = document.createElement("h5");
+    riskTitle.textContent = t("skillsRisk");
+    const riskRow = document.createElement("div");
+    riskRow.className = "risk-row";
+    skill.risks.forEach((riskKey) => {
+      const span = document.createElement("span");
+      span.textContent = t(riskKey);
+      riskRow.appendChild(span);
+    });
+    riskSection.appendChild(riskTitle);
+    riskSection.appendChild(riskRow);
+    body.appendChild(riskSection);
+
+    const anchorNote = document.createElement("div");
+    anchorNote.className = "skill-meta";
+    anchorNote.textContent = `${t("skillsAnchor")}: ${t(skill.anchorKey)}`;
+    body.appendChild(anchorNote);
+
+    if (!unlocked) {
+      const hint = document.createElement("div");
+      hint.className = "skill-meta";
+      hint.textContent = t("skillsLockedHint");
+      body.appendChild(hint);
+    }
+
+    card.appendChild(body);
+    skillsCardsEl.appendChild(card);
+  });
+}
+
+function toggleSkillExpansion(skillId) {
+  if (!skillId) return;
+  if (appState.expandedSkillId === skillId) {
+    appState.expandedSkillId = null;
+  } else {
+    appState.expandedSkillId = skillId;
+  }
+  renderSkillsUI();
+}
+
+function toggleSkillsView() {
+  appState.skillsView = appState.skillsView === "stack" ? "all" : "stack";
+  if (appState.skillsView === "stack") {
+    appState.expandedSkillId = null;
+  }
+  renderSkillsUI();
+}
+
+function selectWatsonSkill(metrics) {
+  if (appState.watsonFrequency === "off") return null;
+  const unlocked = SKILLS.filter((skill) => skill.unlock(metrics));
+  if (unlocked.length === 0) return null;
+  const ordered = unlocked.slice().sort(
+    (a, b) => getSkillPriority(a, metrics) - getSkillPriority(b, metrics)
+  );
+
+  let pool = ordered;
+  if (appState.watsonFrequency === "rare") {
+    pool = ordered.filter((skill) => getSkillPriority(skill, metrics) <= 3);
+  } else if (appState.watsonFrequency === "normal") {
+    const focused = ordered.filter((skill) => getSkillPriority(skill, metrics) <= 4);
+    pool = focused.length ? focused : ordered;
+  }
+
+  if (pool.length === 0) return null;
+
+  if (appState.watsonQuality < 40) {
+    return pool[pool.length - 1];
+  }
+  if (appState.watsonQuality < 70) {
+    return pool[Math.floor(pool.length / 2)];
+  }
+  return pool[0];
+}
+
+function renderWatsonSuggestion(metrics) {
+  if (!watsonSuggestionEl || !watsonChipBtn || !watsonEmptyEl) return;
+  if (appState.watsonFrequency === "off") {
+    watsonSuggestionEl.hidden = true;
+    watsonEmptyEl.hidden = true;
+    return;
+  }
+  const skill = selectWatsonSkill(metrics);
+  if (!skill) {
+    watsonSuggestionEl.hidden = true;
+    watsonEmptyEl.hidden = false;
+    return;
+  }
+  const suggestionText =
+    appState.watsonStyle === "hypothesis"
+      ? t("watsonTemplateHypothesis", { suggestion: t(skill.suggestionKey) })
+      : t("watsonTemplateQuestion", { skill: t(skill.nameKey) });
+  watsonChipBtn.textContent = suggestionText;
+  watsonChipBtn.dataset.skillId = skill.id;
+  watsonSuggestionEl.hidden = false;
+  watsonEmptyEl.hidden = true;
+}
+
+function renderSkillsUI() {
+  if (!appState.skillsEnabled) return;
+  const board = buildBoardState();
+  const context = buildSkillsContext(board);
+  if (skillsViewToggle) {
+    const viewKey = appState.skillsView === "stack" ? "skillsViewAll" : "skillsViewStack";
+    skillsViewToggle.textContent = t(viewKey);
+  }
+  renderSkillsBoard(board);
+  renderSkillsCards(board.metrics, context);
+  renderWatsonSuggestion(board.metrics);
+}
+
+function buildWatsonTools(context) {
+  return SKILLS.map((skill) => ({
+    id: skill.id,
+    name: t(skill.nameKey),
+    output: t(SKILL_OUTPUT_LABELS[skill.output]),
+    summary: t(skill.whatKey),
+    prompt: formatPrompt(t(skill.promptKeys[0]), context)
+  }));
 }
 
 function applyTranslations() {
@@ -209,7 +1217,11 @@ function applyTranslations() {
     const key = el.dataset.i18n;
     el.textContent = I18N.t(lang, key);
   });
-  messageInput.placeholder = I18N.t(lang, "placeholder");
+  messageInput.placeholder = I18N.t(
+    lang,
+    appState.chatMode === "watson" ? "watsonPlaceholder" : "placeholder"
+  );
+  renderSkillsUI();
 }
 
 function renderSolutionResult(result) {
@@ -309,9 +1321,13 @@ function applyState(data, { clearChat = false, rehydrateChat = false } = {}) {
   renderPublicState();
   renderCaseHeader();
   if (rehydrateChat) {
-    hydrateChatLogFromEvents();
+    renderChatLog({ forceBriefing: true });
   } else if (clearChat) {
-    appendCaseBriefing({ force: true });
+    if (appState.chatMode === "watson") {
+      renderChatLog();
+    } else {
+      appendCaseBriefing({ force: true });
+    }
   }
   renderCaseSelect();
 }
@@ -336,6 +1352,52 @@ chatForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const message = messageInput.value.trim();
   if (!message) return;
+  if (appState.chatMode === "watson") {
+    appendWatsonMessage(message, "watson-user");
+    messageInput.value = "";
+    const board = buildBoardState();
+    const context = buildSkillsContext(board);
+    try {
+      const history = appState.watsonLog.slice(0, -1).slice(-12);
+      const res = await fetch("/api/watson", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          sessionId: appState.sessionId,
+          caseId: appState.caseId,
+          language: appState.language,
+          message,
+          watson_settings: {
+            frequency: appState.watsonFrequency,
+            style: appState.watsonStyle,
+            quality: appState.watsonQuality
+          },
+          watson_history: history,
+          board_state: {
+            anchors: board.anchors.slice(0, 8),
+            timeline_gaps: board.timelineGaps.slice(0, 4),
+            evidence: board.evidence.slice(0, 8),
+            contradictions: board.contradictions.slice(0, 6),
+            relationships: board.relationships.slice(0, 6),
+            metrics: board.metrics
+          },
+          watson_tools: buildWatsonTools(context),
+          client_state: appState.clientState
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        appendWatsonMessage(data.error || t("watsonChatError"), "watson");
+        return;
+      }
+      appendWatsonMessage(data.dialogue || t("watsonChatNoSuggestion"), "watson");
+    } catch (error) {
+      appendWatsonMessage(t("watsonChatError"), "watson");
+    }
+    return;
+  }
   if (!appState.activeCharacterId) {
     appendMessage(I18N.t(appState.language, "selectCharacter"), "detective");
     return;
@@ -375,7 +1437,7 @@ chatForm.addEventListener("submit", async (event) => {
   renderPublicState();
   if (data.model_used) {
     const suffix = data.model_mock && data.model_selected
-      ? ` (mock → ${data.model_selected})`
+      ? ` (mock -> ${data.model_selected})`
       : "";
     modelUsedValue.textContent = `${data.model_used}${suffix}`;
   }
@@ -412,9 +1474,24 @@ const storedModelMode = localStorage.getItem("modelMode");
 const browserLang = navigator.language || "en";
 appState.language = I18N.normalizeLanguage(storedLang || browserLang);
 appState.modelMode = storedModelMode || "auto";
+appState.skillsEnabled = localStorage.getItem("skillsEnabled") === "true";
+appState.skillsDrawerOpen = localStorage.getItem("skillsDrawerOpen") === "true";
+appState.watsonFrequency = localStorage.getItem("watsonFrequency") || "off";
+appState.watsonStyle = localStorage.getItem("watsonStyle") || "questions";
+appState.watsonQuality = Number(localStorage.getItem("watsonQuality")) || 70;
+appState.watsonLog = loadWatsonLog();
 languageSelect.value = appState.language;
 modelModeSelect.value = appState.modelMode;
+if (skillsToggle) skillsToggle.checked = appState.skillsEnabled;
+if (watsonFrequencySelect) watsonFrequencySelect.value = appState.watsonFrequency;
+if (watsonStyleSelect) watsonStyleSelect.value = appState.watsonStyle;
+if (watsonQualityRange) watsonQualityRange.value = String(appState.watsonQuality);
 applyTranslations();
+setSkillsFeatureEnabled(appState.skillsEnabled);
+if (appState.skillsEnabled && appState.skillsDrawerOpen) {
+  openSkillsDrawer();
+}
+setChatMode(appState.chatMode);
 appState.clientState = loadStoredClientState();
 if (appState.clientState?.case_id) {
   appState.caseId = appState.clientState.case_id;
@@ -513,3 +1590,105 @@ modelModeSelect.addEventListener("change", () => {
   appState.modelMode = modelModeSelect.value || "auto";
   localStorage.setItem("modelMode", appState.modelMode);
 });
+
+if (skillsToggle) {
+  skillsToggle.addEventListener("change", () => {
+    setSkillsFeatureEnabled(skillsToggle.checked);
+  });
+}
+
+if (skillsDrawerTab) {
+  skillsDrawerTab.addEventListener("click", () => {
+    toggleSkillsDrawer();
+  });
+}
+
+if (skillsCloseBtn) {
+  skillsCloseBtn.addEventListener("click", () => {
+    closeSkillsDrawer();
+  });
+}
+
+if (skillsDrawer) {
+  skillsDrawer.addEventListener("click", (event) => {
+    const promptButton = event.target.closest(".prompt-chip");
+    if (promptButton && promptButton.dataset.prompt) {
+      messageInput.value = promptButton.dataset.prompt;
+      messageInput.focus();
+      return;
+    }
+    const skillTarget = event.target.closest("[data-skill-target]");
+    if (skillTarget) {
+      openSkillsDrawer({ focusSkillId: skillTarget.dataset.skillTarget });
+    }
+  });
+}
+
+if (skillsCardsEl) {
+  skillsCardsEl.addEventListener("click", (event) => {
+    if (event.target.closest(".prompt-chip")) return;
+    const card = event.target.closest(".skill-card");
+    if (!card || card.classList.contains("locked")) return;
+    toggleSkillExpansion(card.dataset.skillId);
+  });
+}
+
+if (skillsViewToggle) {
+  skillsViewToggle.addEventListener("click", () => {
+    toggleSkillsView();
+  });
+}
+
+if (chatTabCase) {
+  chatTabCase.addEventListener("click", () => {
+    setChatMode("case");
+  });
+}
+
+if (chatTabWatson) {
+  chatTabWatson.addEventListener("click", () => {
+    if (!appState.skillsEnabled) return;
+    setChatMode("watson");
+  });
+}
+
+if (watsonCard) {
+  watsonCard.addEventListener("click", () => {
+    if (!appState.skillsEnabled) return;
+    setChatMode("watson");
+  });
+}
+
+if (watsonChipBtn) {
+  watsonChipBtn.addEventListener("click", () => {
+    const skillId = watsonChipBtn.dataset.skillId;
+    if (skillId) {
+      openSkillsDrawer({ focusSkillId: skillId });
+    }
+  });
+}
+
+if (watsonFrequencySelect) {
+  watsonFrequencySelect.addEventListener("change", () => {
+    appState.watsonFrequency = watsonFrequencySelect.value;
+    localStorage.setItem("watsonFrequency", appState.watsonFrequency);
+    renderSkillsUI();
+  });
+}
+
+if (watsonStyleSelect) {
+  watsonStyleSelect.addEventListener("change", () => {
+    appState.watsonStyle = watsonStyleSelect.value;
+    localStorage.setItem("watsonStyle", appState.watsonStyle);
+    renderSkillsUI();
+  });
+}
+
+if (watsonQualityRange) {
+  watsonQualityRange.addEventListener("input", () => {
+    const value = Number(watsonQualityRange.value);
+    appState.watsonQuality = Number.isNaN(value) ? 70 : value;
+    localStorage.setItem("watsonQuality", String(appState.watsonQuality));
+    renderSkillsUI();
+  });
+}

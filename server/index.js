@@ -12,6 +12,7 @@ import {
 } from "./state.js";
 import { getCaseList } from "./cases.js";
 import { runTurn } from "./logic.js";
+import { generateWatsonResponse } from "./llm.js";
 import { ensureCaseBriefing } from "./narrator.js";
 import { checkSolution } from "./checker.js";
 
@@ -122,6 +123,61 @@ app.post("/api/turn", async (req, res) => {
     model_mock: result.model_mock,
     client_state: extractClientState(session.state)
   });
+});
+
+app.post("/api/watson", async (req, res) => {
+  const {
+    sessionId,
+    language,
+    caseId,
+    client_state,
+    message,
+    watson_settings,
+    watson_history,
+    board_state,
+    watson_tools
+  } = req.body || {};
+
+  if (!message) {
+    res.status(400).json({ error: "message is required" });
+    return;
+  }
+
+  const state = client_state
+    ? buildStateFromClient({ caseId, clientState: client_state })
+    : getOrCreateSession(sessionId, caseId).state;
+  await ensureCaseBriefing({ state });
+
+  try {
+    const result = await generateWatsonResponse({
+      message,
+      language,
+      publicState: state.public_state,
+      allCharacters: state.characters,
+      boardState: board_state,
+      tools: watson_tools,
+      settings: watson_settings,
+      history: watson_history
+    });
+
+    res.json({
+      sessionId: sessionId || null,
+      dialogue: result.dialogue,
+      model_used: result._meta?.model_used || "unknown",
+      model_selected: result._meta?.model_selected || "unknown",
+      model_mode: result._meta?.model_mode || "watson",
+      model_mock: Boolean(result._meta?.mock)
+    });
+  } catch (error) {
+    res.json({
+      sessionId: sessionId || null,
+      dialogue: "Watson is taking a breath. Try again in a moment.",
+      model_used: "fallback",
+      model_selected: "fallback",
+      model_mode: "watson",
+      model_mock: true
+    });
+  }
 });
 
 app.post("/api/reset", async (req, res) => {
