@@ -1,3 +1,5 @@
+import { buildCaseIntro } from "./intro.js";
+
 const loc = (en, el = en) => ({ en, el });
 
 function unwrap(value, lang) {
@@ -144,5 +146,6 @@ export function enrichStateFromCase(state) {
     ensureFrames(character, state.public_state);
     return character;
   });
+  state.public_state.case_intro = buildCaseIntro(state);
   return state;
 }

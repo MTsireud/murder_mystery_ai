@@ -72,6 +72,7 @@ export function localizePublicState(publicState, lang) {
   const relationshipHistory = Array.isArray(publicState.relationship_history)
     ? publicState.relationship_history
     : [];
+  const caseIntro = publicState.case_intro || null;
   return {
     victim_name: getLocalized(publicState.victim_name, lang),
     victim_role: getLocalized(publicState.victim_role, lang),
@@ -103,6 +104,12 @@ export function localizePublicState(publicState, lang) {
       location_id: entry.location_id || "",
       participants: Array.isArray(entry.participants) ? entry.participants : []
     })),
+    case_intro: caseIntro
+      ? {
+          en: Array.isArray(caseIntro.en) ? caseIntro.en : [],
+          el: Array.isArray(caseIntro.el) ? caseIntro.el : []
+        }
+      : null,
     time_minutes: publicState.time_minutes,
     discovered_evidence: localizeList(publicState.discovered_evidence, lang),
     public_accusations: localizeList(publicState.public_accusations, lang),

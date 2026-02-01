@@ -40,6 +40,7 @@ const CASE_LIBRARY = [
         "Είσαι ο ντετέκτιβ που καλείται στο θέατρο Adelphi αμέσως μετά το φινάλε. Μέσα, ο διευθυντής του θιάσου Gideon έχει ήδη μιλήσει με τον κριτικό Milo, ενώ η αναπληρώτρια Lydia έχει κουλουριαστεί με την υπεύθυνη κοστουμιών Ada και ο απολυμένος Rowan κρατιέται μακριά. Το θύμα Edmund Vale συγκρούστηκε με συναδέλφους και έφυγε χωρίς συνοδεία, οπότε η ιστορία διαλύθηκε γρήγορα. Η Harriet στη σκηνική πόρτα είναι η πιο άμεση πρόσβασή σου στο βιβλίο εισόδων και το πλήθος έξω πιέζει."
       ),
       case_briefing_source: "library",
+      initial_callers: [loc("Dr. Elena Markos", "Δρ. Έλενα Μάρκος")],
       time_minutes: 0,
       discovered_evidence: [loc("bloodied playbill")],
       public_accusations: [],
@@ -712,6 +713,12 @@ const CASE_LIBRARY = [
             "ιδιωτικά χρέη από αποτυχημένη επένδυση"
           )
         },
+        relationship_to_victim: loc("private investigator hired by Elena", "ιδιωτική ερευνήτρια που προσλήφθηκε από την Έλενα"),
+        relationship_to_victim: loc("courier carrying the family’s messages", "διανομέας που μεταφέρει μηνύματα της οικογένειας"),
+        relationship_to_victim: loc("logistics contractor tied to the family", "εργολάβος logistics συνδεδεμένη με την οικογένεια"),
+        relationship_to_victim: loc("family driver and escort", "οικογενειακός οδηγός και συνοδός"),
+        relationship_to_victim: loc("adoptive mother and protector", "θετή μητέρα και προστάτιδα"),
+        relationship_to_victim: loc("family associate and logistics lead", "συνεργάτης της οικογένειας και υπεύθυνος logistics"),
         relationships: [
           {
             with: "elena",
