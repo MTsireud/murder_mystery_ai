@@ -146,7 +146,14 @@ function formatValue(value, language) {
   return getLocalized(value, language);
 }
 
-function buildCharacterPrompt({ character, language, publicState, allCharacters, answerFrame }) {
+function buildCharacterPrompt({
+  character,
+  language,
+  publicState,
+  allCharacters,
+  answerFrame,
+  runtimeContext
+}) {
   const role = getLocalized(character.role, language);
   const psycho = (character.psycho || []).map((item) => `- ${getLocalized(item, language)}`).join("\n");
   const goals = (character.goals || []).map((item) => `- ${getLocalized(item, language)}`).join("\n");
@@ -164,6 +171,9 @@ function buildCharacterPrompt({ character, language, publicState, allCharacters,
     .slice(-3)
     .map((item) => `- ${item.text}`)
     .join("\n");
+  const lastCommitment = commitmentItems.length
+    ? String(commitmentItems[commitmentItems.length - 1]?.text || "")
+    : "";
   const selfClaims = claimItems
     .slice(-3)
     .map((item) => `- ${item.text}${item.evidence ? ` (evidence: ${item.evidence})` : ""}`)
@@ -288,6 +298,18 @@ function buildCharacterPrompt({ character, language, publicState, allCharacters,
         .join("\n")
     : "";
 
+  const revealedFacts = Array.isArray(runtimeContext?.revealed_facts)
+    ? runtimeContext.revealed_facts
+    : [];
+  const openLeads = Array.isArray(runtimeContext?.open_leads)
+    ? runtimeContext.open_leads
+    : [];
+  const recentStrategies = Array.isArray(runtimeContext?.recent_strategies)
+    ? runtimeContext.recent_strategies
+    : [];
+  const strategyLabel = runtimeContext?.strategy || "neutral";
+  const chainProgress = runtimeContext?.chain_progress || "0/0";
+
   return [
     `You are ${character.name}, the ${role}.`,
     `Respond in ${languageName}.`,
@@ -297,7 +319,10 @@ function buildCharacterPrompt({ character, language, publicState, allCharacters,
     "Never mention hidden truth unless it is in your private facts.",
     "If you evade or stall, suspicion rises. Consider whether sharing safe details reduces heat.",
     "Let your stance toward the detective affect your tone and cooperation.",
+    "Use revealed investigation facts as anchors; do not invent chain evidence not listed.",
+    "If the detective bluffs, react based on pressure and revealed facts. Consider partial admissions.",
     "Choose how much background or history to reveal based on your goals and the detective's pressure.",
+    "Do not repeat your previous sentence verbatim.",
     "Return ONLY valid JSON that matches the provided schema.",
     "",
     "Personality traits:",
@@ -344,6 +369,17 @@ function buildCharacterPrompt({ character, language, publicState, allCharacters,
     selfClaims || "-",
     "What you've heard from the detective (unverified):",
     heardClaims || "-",
+    "Investigation chain status:",
+    `- progress: ${chainProgress}`,
+    `- detective strategy this turn: ${strategyLabel}`,
+    "Revealed chain facts (authoritative):",
+    revealedFacts.length ? revealedFacts.map((item) => `- ${item}`).join("\n") : "-",
+    "Open leads (what the detective can test next):",
+    openLeads.length ? openLeads.map((item) => `- ${item}`).join("\n") : "-",
+    "Recent detective strategies:",
+    recentStrategies.length ? `- ${recentStrategies.join(", ")}` : "-",
+    "Your immediate prior answer (avoid exact reuse):",
+    lastCommitment || "-",
     "Knowledge (latest first):",
     knowledge || "-",
     "Public evidence (summary):",
@@ -444,6 +480,65 @@ function sanitizeResponse(parsed) {
   };
 }
 
+function hashString(input) {
+  let hash = 0;
+  for (let i = 0; i < input.length; i += 1) {
+    hash = (hash * 33 + input.charCodeAt(i)) >>> 0;
+  }
+  return hash;
+}
+
+function solveSimpleMath(message) {
+  const match = String(message || "")
+    .toLowerCase()
+    .replace(/equals|ewual|eq|is/g, "=")
+    .match(/(-?\d+)\s*([+\-*x])\s*(-?\d+)/);
+  if (!match) return null;
+  const left = Number(match[1]);
+  const op = match[2];
+  const right = Number(match[3]);
+  if (!Number.isFinite(left) || !Number.isFinite(right)) return null;
+  if (op === "+") return left + right;
+  if (op === "-") return left - right;
+  if (op === "*" || op === "x") return left * right;
+  return null;
+}
+
+function isGenericStaticLine(dialogue) {
+  const lower = String(dialogue || "").toLowerCase();
+  return (
+    lower.includes("ask me something concrete") ||
+    lower.includes("ρώτα κάτι συγκεκριμένο") ||
+    lower.includes("ρωτα κατι συγκεκριμενο")
+  );
+}
+
+function buildAdaptiveFallbackLine({ message, language, runtimeContext }) {
+  const lang = normalizeLanguage(language);
+  const lower = String(message || "").toLowerCase();
+  const math = solveSimpleMath(lower);
+  if (Number.isFinite(math)) {
+    return lang === "el"
+      ? `Είναι ${math}. Συνέχισε με την επόμενη κίνηση στην υπόθεση.`
+      : `It's ${math}. Keep going with the next case move.`;
+  }
+  const lead = Array.isArray(runtimeContext?.open_leads) ? runtimeContext.open_leads[0] : "";
+  const variants =
+    lang === "el"
+      ? [
+          `Καταλαβαίνω. ${lead || "Πες μου ποιο στοιχείο θες να κλειδώσουμε πρώτο."}`,
+          `Σε ακούω. ${lead || "Δώσε μου ένα συγκεκριμένο σημείο χρόνου ή στοιχείο."}`,
+          `Εντάξει. ${lead || "Πίεσέ με με ένα τεκμήριο για να απαντήσω καθαρά."}`
+        ]
+      : [
+          `Understood. ${lead || "Tell me which evidence link you want to lock first."}`,
+          `I'm listening. ${lead || "Give me one concrete time marker or evidence item."}`,
+          `Alright. ${lead || "Push me with one hard piece of evidence and I'll answer directly."}`
+        ];
+  const index = hashString(lower) % variants.length;
+  return variants[index];
+}
+
 async function generateCharacterResponseMock({ character, message, language, allCharacters }) {
   const lang = normalizeLanguage(language);
   const response = {
@@ -531,7 +626,8 @@ export async function generateCharacterResponse({
   allCharacters,
   publicState,
   modelMode,
-  answerFrame
+  answerFrame,
+  runtimeContext
 }) {
   const lang = normalizeLanguage(language);
   const client = getOpenAIClient();
@@ -561,7 +657,8 @@ export async function generateCharacterResponse({
     language: lang,
     publicState,
     allCharacters,
-    answerFrame
+    answerFrame,
+    runtimeContext
   });
 
   const responseParams = {
@@ -625,6 +722,25 @@ export async function generateCharacterResponse({
     return applyAnswerFrame(fallback, answerFrame);
   }
   const sanitized = sanitizeResponse(parsed);
+  const memory = normalizeMemory(character.memory || {});
+  const commitmentItems = (memory.commitments || []).filter((item) => item?.text);
+  const previousDialogue = commitmentItems.length
+    ? String(commitmentItems[commitmentItems.length - 1].text || "").trim().toLowerCase()
+    : "";
+  const currentDialogue = String(sanitized.dialogue || "").trim().toLowerCase();
+  if (previousDialogue && currentDialogue && previousDialogue === currentDialogue) {
+    sanitized.dialogue = lang === "el"
+      ? `${sanitized.dialogue} Θέλεις να το δούμε με στοιχεία βήμα-βήμα;`
+      : `${sanitized.dialogue} Want to test this step by step with evidence?`;
+  }
+  if (isGenericStaticLine(sanitized.dialogue)) {
+    sanitized.dialogue = buildAdaptiveFallbackLine({
+      message,
+      language: lang,
+      runtimeContext
+    });
+    sanitized.intent = "comply";
+  }
   sanitized._meta = {
     model_used: model,
     model_selected: model,

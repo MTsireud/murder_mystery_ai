@@ -9,6 +9,11 @@ import {
   updateHeat
 } from "./memory.js";
 import { selectAnswerFrame } from "./router.js";
+import {
+  applyInvestigationTurn,
+  createInvestigationState,
+  normalizeInvestigationState
+} from "./investigation.js";
 
 function canonicalValue(value) {
   if (!value) return "";
@@ -92,6 +97,25 @@ export async function runTurn({ state, characterId, message, language, modelMode
 
   const lang = normalizeLanguage(language);
   const memory = ensureCharacterMemory(character);
+  state.investigation_state = normalizeInvestigationState(state.investigation_state, state.case_id);
+  if (!state.investigation_state) {
+    state.investigation_state = createInvestigationState(state.case_id);
+  }
+  const investigationTurn = await applyInvestigationTurn({
+    caseId: state.case_id,
+    investigationState: state.investigation_state,
+    message,
+    characterId,
+    language: lang,
+    caseContext: {
+      truth: state.truth,
+      public_state: state.public_state,
+      characters: state.characters
+    }
+  });
+  if (investigationTurn?.state) {
+    state.investigation_state = investigationTurn.state;
+  }
   const routedFrame = selectAnswerFrame({
     message,
     language: lang,
@@ -107,8 +131,22 @@ export async function runTurn({ state, characterId, message, language, modelMode
     allCharacters: state.characters,
     publicState: state.public_state,
     modelMode,
-    answerFrame: activeFrame
+    answerFrame: activeFrame,
+    runtimeContext: investigationTurn?.prompt_context || null
   });
+  if (investigationTurn?.forced_statement?.text) {
+    characterResponse.dialogue = investigationTurn.forced_statement.text;
+    characterResponse.intent = "reveal";
+    const currentClaims = Array.isArray(characterResponse.claims) ? characterResponse.claims : [];
+    characterResponse.claims = currentClaims.concat([
+      {
+        type: "observation",
+        content: investigationTurn.forced_statement.text,
+        confidence: "medium",
+        evidence: investigationTurn.forced_statement.evidence_label || ""
+      }
+    ]);
+  }
 
   const now = state.public_state.time_minutes;
   const timeAdvance = 10;
@@ -172,23 +210,34 @@ export async function runTurn({ state, characterId, message, language, modelMode
   }
 
   const evidence = extractEvidenceFromClaims(characterResponse.claims);
+  const chainEvidence = Array.isArray(investigationTurn?.evidence_delta)
+    ? investigationTurn.evidence_delta
+    : [];
+  const chainAccusations = Array.isArray(investigationTurn?.accusations_delta)
+    ? investigationTurn.accusations_delta
+    : [];
 
   if (characterResponse.intent === "deflect") {
     addUnique(state.public_state.tensions, tAll("tension_evasive", { name: character.name }));
   }
 
   addManyUnique(state.public_state.public_accusations, newAccusations);
+  addManyUnique(state.public_state.public_accusations, chainAccusations);
   addManyUnique(state.public_state.discovered_evidence, evidence);
+  addManyUnique(state.public_state.discovered_evidence, chainEvidence);
 
   state.public_state.time_minutes += timeAdvance;
+
+  const combinedEvidence = evidence.concat(chainEvidence);
+  const combinedAccusations = newAccusations.concat(chainAccusations);
 
   return {
     character_response: characterResponse,
     event_delta: eventDelta,
     time_advance_minutes: timeAdvance,
     public_state: localizePublicState(state.public_state, lang),
-    evidence_delta: localizeList(evidence, lang),
-    accusations_delta: localizeList(newAccusations, lang),
+    evidence_delta: localizeList(combinedEvidence, lang),
+    accusations_delta: localizeList(combinedAccusations, lang),
     model_used: characterResponse._meta?.model_used || "unknown",
     model_selected: characterResponse._meta?.model_selected || "unknown",
     model_mode: characterResponse._meta?.model_mode || "auto",

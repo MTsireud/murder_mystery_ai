@@ -1,0 +1,759 @@
+{
+  "clue_chain": [
+    {
+      "id": "camera_evidence",
+      "requires": [],
+      "triggers": [
+        "camera",
+        "cctv",
+        "footage",
+        "video",
+        "gate 2",
+        "κάμερα",
+        "βιντεο",
+        "βίντεο"
+      ],
+      "reveal_fact_ids": [
+        "F_CAM_1940_VAN",
+        "F_SHADOW_POSITION",
+        "F_LIGHT_ANGLE_1940",
+        "F_OCCLUSION_WINDOW_GATE2",
+        "F_LANE_GEOMETRY_C"
+      ],
+      "evidence": [
+        {
+          "en": "gate 2 cctv clip",
+          "el": "gate 2 cctv clip"
+        },
+        {
+          "en": "exit lane shadow timestamp",
+          "el": "exit lane shadow timestamp"
+        }
+      ],
+      "leads": [
+        {
+          "en": "check the visible plate frame in the camera freeze",
+          "el": "check the visible plate frame in the camera freeze"
+        }
+      ]
+    },
+    {
+      "id": "plate_check",
+      "requires": [
+        "camera_evidence"
+      ],
+      "triggers": [
+        "plate",
+        "license",
+        "registry",
+        "registration",
+        "number plate",
+        "πινακ",
+        "αδεια",
+        "άδεια"
+      ],
+      "reveal_fact_ids": [
+        "F_PLATE_ALIAS",
+        "F_PLATE_TO_TASOS",
+        "F_REGISTRY_EDIT_WINDOW"
+      ],
+      "evidence": [
+        {
+          "en": "plate registry extract",
+          "el": "plate registry extract"
+        },
+        {
+          "en": "fleet assignment memo",
+          "el": "fleet assignment memo"
+        }
+      ],
+      "leads": [
+        {
+          "en": "search the linked vehicle interior for restraint evidence",
+          "el": "search the linked vehicle interior for restraint evidence"
+        }
+      ]
+    },
+    {
+      "id": "car_item",
+      "requires": [
+        "plate_check"
+      ],
+      "triggers": [
+        "search car",
+        "inside the car",
+        "inside car",
+        "trunk",
+        "glove box",
+        "zip tie",
+        "zip ties",
+        "look in car",
+        "ψαξε το αμαξι",
+        "ψάξε το αμάξι",
+        "πορτ μπαγκαζ",
+        "πορτμπαγκαζ",
+        "δεματικ",
+        "δεματικά"
+      ],
+      "reveal_fact_ids": [
+        "F_ZIP_TIE_BRAND",
+        "F_SEDATIVE_TRACE",
+        "F_CAR_INTERIOR_HIDE_METHOD"
+      ],
+      "evidence": [
+        {
+          "en": "industrial zip ties from trunk",
+          "el": "industrial zip ties from trunk"
+        },
+        {
+          "en": "sedative vial trace in glove box",
+          "el": "sedative vial trace in glove box"
+        }
+      ],
+      "leads": [
+        {
+          "en": "link the zip tie brand to warehouse inventory and loading bay cameras",
+          "el": "link the zip tie brand to warehouse inventory and loading bay cameras"
+        }
+      ]
+    },
+    {
+      "id": "warehouse_link",
+      "requires": [
+        "car_item"
+      ],
+      "triggers": [
+        "warehouse",
+        "loading bay",
+        "inventory",
+        "storage",
+        "voss",
+        "αποθηκ",
+        "φορτωση",
+        "φόρτωση",
+        "inventory"
+      ],
+      "reveal_fact_ids": [
+        "F_WAREHOUSE_LOG",
+        "F_REAR_DOOR_SHADOW",
+        "F_LOADING_BAY_BLIND_SPOT"
+      ],
+      "evidence": [
+        {
+          "en": "warehouse inventory ledger line",
+          "el": "warehouse inventory ledger line"
+        },
+        {
+          "en": "rear loading bay camera still",
+          "el": "rear loading bay camera still"
+        }
+      ],
+      "leads": [
+        {
+          "en": "check call logs between spiros and tasos around 7:35 to 7:45 pm",
+          "el": "check call logs between spiros and tasos around 7:35 to 7:45 pm"
+        }
+      ]
+    },
+    {
+      "id": "killer_link",
+      "requires": [
+        "warehouse_link"
+      ],
+      "triggers": [
+        "call log",
+        "calls",
+        "order",
+        "who planned",
+        "who ordered",
+        "mastermind",
+        "spiros",
+        "αρχειο κλησ",
+        "αρχεία κλήσ",
+        "εντολη",
+        "εντολή",
+        "ποιος το σχεδιασε",
+        "ποιος το σχεδίασε"
+      ],
+      "reveal_fact_ids": [
+        "F_SPIROS_ORDER",
+        "F_ESCAPE_ROUTE",
+        "F_MINUTE_CONTRADICTION_GRID"
+      ],
+      "evidence": [
+        {
+          "en": "phone call overlap chart",
+          "el": "phone call overlap chart"
+        },
+        {
+          "en": "route sketch from marina to holding site",
+          "el": "route sketch from marina to holding site"
+        }
+      ],
+      "leads": [
+        {
+          "en": "pressure each accomplice with statement requests and contradictions",
+          "el": "pressure each accomplice with statement requests and contradictions"
+        }
+      ]
+    }
+  ],
+  "truth_ledger": [
+    {
+      "id": "F_CAM_1940_VAN",
+      "summary": {
+        "en": "7:40 PM gate camera shows a dark van tailing Nikos's sedan out of lane C.",
+        "el": "7:40 PM gate camera shows a dark van tailing Nikos's sedan out of lane C."
+      },
+      "detail": {
+        "en": "Vehicle enters from a blind angle and tracks Nikos at low speed, then cuts lights before the corner.",
+        "el": "Vehicle enters from a blind angle and tracks Nikos at low speed, then cuts lights before the corner."
+      },
+      "micro_details": [
+        {
+          "en": "Frame counter jump at 19:40:12 indicates manual camera focus correction.",
+          "el": "Frame counter jump at 19:40:12 indicates manual camera focus correction."
+        },
+        {
+          "en": "Rear bumper reflection confirms marine-fuel dock lights were on.",
+          "el": "Rear bumper reflection confirms marine-fuel dock lights were on."
+        }
+      ],
+      "contradiction_tests": [
+        {
+          "en": "Any claim that no second vehicle was present at 19:40 conflicts with frame 19:40:13.",
+          "el": "Any claim that no second vehicle was present at 19:40 conflicts with frame 19:40:13."
+        },
+        {
+          "en": "Any alibi placing Tasos continuously inside the villa at 19:40 conflicts with camera silhouette timing.",
+          "el": "Any alibi placing Tasos continuously inside the villa at 19:40 conflicts with camera silhouette timing."
+        }
+      ]
+    },
+    {
+      "id": "F_SHADOW_POSITION",
+      "summary": {
+        "en": "The driver shadow is offset to the left pillar, consistent with Tasos's seat habit.",
+        "el": "The driver shadow is offset to the left pillar, consistent with Tasos's seat habit."
+      },
+      "detail": {
+        "en": "Frame contrast marks the same shoulder tilt Tasos has in prior marina footage.",
+        "el": "Frame contrast marks the same shoulder tilt Tasos has in prior marina footage."
+      },
+      "micro_details": [
+        {
+          "en": "Shoulder drop of roughly 6 degrees matches Tasos's habitual steering posture.",
+          "el": "Shoulder drop of roughly 6 degrees matches Tasos's habitual steering posture."
+        },
+        {
+          "en": "Headrest notch lines up with Tasos's documented seat setting from fleet service photos.",
+          "el": "Headrest notch lines up with Tasos's documented seat setting from fleet service photos."
+        }
+      ],
+      "contradiction_tests": [
+        {
+          "en": "A claim that an unknown taller driver operated the van conflicts with seat-height geometry.",
+          "el": "A claim that an unknown taller driver operated the van conflicts with seat-height geometry."
+        }
+      ]
+    },
+    {
+      "id": "F_LIGHT_ANGLE_1940",
+      "summary": {
+        "en": "Fuel-dock floodlight angle places the shadow origin at the van driver side at 19:40.",
+        "el": "Fuel-dock floodlight angle places the shadow origin at the van driver side at 19:40."
+      },
+      "detail": {
+        "en": "The 32-degree light angle excludes shadows cast from sidewalk pedestrians.",
+        "el": "The 32-degree light angle excludes shadows cast from sidewalk pedestrians."
+      },
+      "micro_details": [
+        {
+          "en": "Dock mast light #3 casts a hard edge matching the driver window frame.",
+          "el": "Dock mast light #3 casts a hard edge matching the driver window frame."
+        },
+        {
+          "en": "The shadow edge shortens exactly as the van moves past bay marker C-7.",
+          "el": "The shadow edge shortens exactly as the van moves past bay marker C-7."
+        }
+      ],
+      "contradiction_tests": [
+        {
+          "en": "Any claim that the shadow came from a passerby conflicts with dock-light vector geometry.",
+          "el": "Any claim that the shadow came from a passerby conflicts with dock-light vector geometry."
+        }
+      ]
+    },
+    {
+      "id": "F_OCCLUSION_WINDOW_GATE2",
+      "summary": {
+        "en": "Gate 2 camera has a 2.8-second occlusion window when buses pass lane B.",
+        "el": "Gate 2 camera has a 2.8-second occlusion window when buses pass lane B."
+      },
+      "detail": {
+        "en": "The van uses this exact occlusion to hide plate transition before exit.",
+        "el": "The van uses this exact occlusion to hide plate transition before exit."
+      },
+      "micro_details": [
+        {
+          "en": "Occlusion begins at 19:40:16 and clears at 19:40:19.",
+          "el": "Occlusion begins at 19:40:16 and clears at 19:40:19."
+        },
+        {
+          "en": "Wheel blur at reappearance indicates acceleration, not idle waiting.",
+          "el": "Wheel blur at reappearance indicates acceleration, not idle waiting."
+        }
+      ],
+      "contradiction_tests": [
+        {
+          "en": "A narrative of continuous full visibility is false because of the known occlusion window.",
+          "el": "A narrative of continuous full visibility is false because of the known occlusion window."
+        }
+      ]
+    },
+    {
+      "id": "F_LANE_GEOMETRY_C",
+      "summary": {
+        "en": "Lane C geometry allows a blind merge from service ramp to exit in under 5 seconds.",
+        "el": "Lane C geometry allows a blind merge from service ramp to exit in under 5 seconds."
+      },
+      "detail": {
+        "en": "The abductor route uses the blind merge to avoid kiosk line-of-sight.",
+        "el": "The abductor route uses the blind merge to avoid kiosk line-of-sight."
+      },
+      "micro_details": [
+        {
+          "en": "Concrete divider blocks kiosk visibility for 14 meters of approach.",
+          "el": "Concrete divider blocks kiosk visibility for 14 meters of approach."
+        },
+        {
+          "en": "Exit lane curvature hides rear plate view beyond marker C-9.",
+          "el": "Exit lane curvature hides rear plate view beyond marker C-9."
+        }
+      ],
+      "contradiction_tests": [
+        {
+          "en": "Any claim that kiosk witnesses had full uninterrupted sight of lane C is geometrically impossible.",
+          "el": "Any claim that kiosk witnesses had full uninterrupted sight of lane C is geometrically impossible."
+        }
+      ]
+    },
+    {
+      "id": "F_PLATE_ALIAS",
+      "summary": {
+        "en": "The visible plate belongs to a shell fleet vehicle and was reassigned that afternoon.",
+        "el": "The visible plate belongs to a shell fleet vehicle and was reassigned that afternoon."
+      },
+      "detail": {
+        "en": "Registry edit is time stamped less than 90 minutes before the abduction window.",
+        "el": "Registry edit is time stamped less than 90 minutes before the abduction window."
+      },
+      "micro_details": [
+        {
+          "en": "Registry terminal ID maps to marina office workstation A2-03.",
+          "el": "Registry terminal ID maps to marina office workstation A2-03."
+        },
+        {
+          "en": "Edit log notes 'temporary maintenance swap' with no maintenance ticket.",
+          "el": "Edit log notes 'temporary maintenance swap' with no maintenance ticket."
+        }
+      ],
+      "contradiction_tests": [
+        {
+          "en": "A claim that the plate mapping was old or routine conflicts with same-day registry audit logs.",
+          "el": "A claim that the plate mapping was old or routine conflicts with same-day registry audit logs."
+        }
+      ]
+    },
+    {
+      "id": "F_PLATE_TO_TASOS",
+      "summary": {
+        "en": "Fleet assignment memo maps the temporary plate to Tasos's vehicle slot.",
+        "el": "Fleet assignment memo maps the temporary plate to Tasos's vehicle slot."
+      },
+      "detail": {
+        "en": "Manual signature is Spiros's office mark, not a marina admin signoff.",
+        "el": "Manual signature is Spiros's office mark, not a marina admin signoff."
+      },
+      "micro_details": [
+        {
+          "en": "Memo ink stamp corresponds to the Asteri villa study seal.",
+          "el": "Memo ink stamp corresponds to the Asteri villa study seal."
+        },
+        {
+          "en": "Slot code T-2 appears only on Tasos weekly dispatch sheets.",
+          "el": "Slot code T-2 appears only on Tasos weekly dispatch sheets."
+        }
+      ],
+      "contradiction_tests": [
+        {
+          "en": "Any claim that Spiros had no involvement in vehicle reassignment conflicts with signature evidence.",
+          "el": "Any claim that Spiros had no involvement in vehicle reassignment conflicts with signature evidence."
+        }
+      ]
+    },
+    {
+      "id": "F_REGISTRY_EDIT_WINDOW",
+      "summary": {
+        "en": "Plate registry was edited between 18:22 and 18:27, then locked from edits.",
+        "el": "Plate registry was edited between 18:22 and 18:27, then locked from edits."
+      },
+      "detail": {
+        "en": "The lockout pattern indicates deliberate pre-incident preparation.",
+        "el": "The lockout pattern indicates deliberate pre-incident preparation."
+      },
+      "micro_details": [
+        {
+          "en": "No further edits occurred until after midnight.",
+          "el": "No further edits occurred until after midnight."
+        },
+        {
+          "en": "The editor used a privileged credential not assigned to marina clerks.",
+          "el": "The editor used a privileged credential not assigned to marina clerks."
+        }
+      ],
+      "contradiction_tests": [
+        {
+          "en": "Claims of a spontaneous plate change during the incident are inconsistent with lockout timing.",
+          "el": "Claims of a spontaneous plate change during the incident are inconsistent with lockout timing."
+        }
+      ]
+    },
+    {
+      "id": "F_ZIP_TIE_BRAND",
+      "summary": {
+        "en": "Zip tie lot code from the trunk matches Voss warehouse restraint stock.",
+        "el": "Zip tie lot code from the trunk matches Voss warehouse restraint stock."
+      },
+      "detail": {
+        "en": "Batch code and cut profile align with pallet M-14 issued the previous week.",
+        "el": "Batch code and cut profile align with pallet M-14 issued the previous week."
+      },
+      "micro_details": [
+        {
+          "en": "The ties show flush-cut marks from a ratchet cutter used in loading bay prep.",
+          "el": "The ties show flush-cut marks from a ratchet cutter used in loading bay prep."
+        },
+        {
+          "en": "Two unused ties in the trunk share sequential batch numbering.",
+          "el": "Two unused ties in the trunk share sequential batch numbering."
+        }
+      ],
+      "contradiction_tests": [
+        {
+          "en": "Any claim the ties were generic retail stock conflicts with warehouse batch sequencing.",
+          "el": "Any claim the ties were generic retail stock conflicts with warehouse batch sequencing."
+        }
+      ]
+    },
+    {
+      "id": "F_SEDATIVE_TRACE",
+      "summary": {
+        "en": "A sedative residue vial in the glove box links to clinic-grade supply.",
+        "el": "A sedative residue vial in the glove box links to clinic-grade supply."
+      },
+      "detail": {
+        "en": "Trace signature matches stock Elena reported missing from locked storage.",
+        "el": "Trace signature matches stock Elena reported missing from locked storage."
+      },
+      "micro_details": [
+        {
+          "en": "Residual concentration indicates transfer from recently opened medical vial.",
+          "el": "Residual concentration indicates transfer from recently opened medical vial."
+        },
+        {
+          "en": "Cap thread residue matches disposable syringe kits used in controlled sedation.",
+          "el": "Cap thread residue matches disposable syringe kits used in controlled sedation."
+        }
+      ],
+      "contradiction_tests": [
+        {
+          "en": "Claims that no chemical restraint was available conflict with clinic stock and glove-box trace.",
+          "el": "Claims that no chemical restraint was available conflict with clinic stock and glove-box trace."
+        }
+      ]
+    },
+    {
+      "id": "F_CAR_INTERIOR_HIDE_METHOD",
+      "summary": {
+        "en": "Interior arrangement suggests a restrained passenger was hidden below rear sightline.",
+        "el": "Interior arrangement suggests a restrained passenger was hidden below rear sightline."
+      },
+      "detail": {
+        "en": "Seat tilt and blanket fold pattern create concealment from external view.",
+        "el": "Seat tilt and blanket fold pattern create concealment from external view."
+      },
+      "micro_details": [
+        {
+          "en": "Rear bench angle was locked one notch lower than standard.",
+          "el": "Rear bench angle was locked one notch lower than standard."
+        },
+        {
+          "en": "Fiber transfer from cargo blanket appears on restraint ties.",
+          "el": "Fiber transfer from cargo blanket appears on restraint ties."
+        }
+      ],
+      "contradiction_tests": [
+        {
+          "en": "Any claim that transport happened without concealment conflicts with seat-angle and fiber evidence.",
+          "el": "Any claim that transport happened without concealment conflicts with seat-angle and fiber evidence."
+        }
+      ]
+    },
+    {
+      "id": "F_WAREHOUSE_LOG",
+      "summary": {
+        "en": "Warehouse ledger logs after-hours rear-door access tied to Spiros's authorization.",
+        "el": "Warehouse ledger logs after-hours rear-door access tied to Spiros's authorization."
+      },
+      "detail": {
+        "en": "Entry is masked under maintenance but aligns with call and vehicle movement timing.",
+        "el": "Entry is masked under maintenance but aligns with call and vehicle movement timing."
+      },
+      "micro_details": [
+        {
+          "en": "Access tag was cloned from daytime loader account and reused after closing.",
+          "el": "Access tag was cloned from daytime loader account and reused after closing."
+        },
+        {
+          "en": "Door-open duration of 4m12s exceeds normal maintenance checks.",
+          "el": "Door-open duration of 4m12s exceeds normal maintenance checks."
+        }
+      ],
+      "contradiction_tests": [
+        {
+          "en": "A claim that the warehouse stayed closed conflicts with authenticated rear-door telemetry.",
+          "el": "A claim that the warehouse stayed closed conflicts with authenticated rear-door telemetry."
+        }
+      ]
+    },
+    {
+      "id": "F_REAR_DOOR_SHADOW",
+      "summary": {
+        "en": "Loading bay camera captures two figures transferring a restrained person.",
+        "el": "Loading bay camera captures two figures transferring a restrained person."
+      },
+      "detail": {
+        "en": "One figure matches Tasos's gait; second figure wears Spiros-style overcoat silhouette.",
+        "el": "One figure matches Tasos's gait; second figure wears Spiros-style overcoat silhouette."
+      },
+      "micro_details": [
+        {
+          "en": "The second figure pauses exactly at blind pillar P3 before re-entering frame.",
+          "el": "The second figure pauses exactly at blind pillar P3 before re-entering frame."
+        },
+        {
+          "en": "Ground shadow length indicates the transfer occurred shortly after 21:00.",
+          "el": "Ground shadow length indicates the transfer occurred shortly after 21:00."
+        }
+      ],
+      "contradiction_tests": [
+        {
+          "en": "Any claim that only one person handled transfer conflicts with dual-shadow frame analysis.",
+          "el": "Any claim that only one person handled transfer conflicts with dual-shadow frame analysis."
+        }
+      ]
+    },
+    {
+      "id": "F_LOADING_BAY_BLIND_SPOT",
+      "summary": {
+        "en": "A fixed blind spot at loading bay pillar P3 allows face concealment for 1.6 seconds.",
+        "el": "A fixed blind spot at loading bay pillar P3 allows face concealment for 1.6 seconds."
+      },
+      "detail": {
+        "en": "The route through P3 was used to avoid direct facial capture.",
+        "el": "The route through P3 was used to avoid direct facial capture."
+      },
+      "micro_details": [
+        {
+          "en": "Camera sweep delay at P3 is consistent across archived nights.",
+          "el": "Camera sweep delay at P3 is consistent across archived nights."
+        },
+        {
+          "en": "Footstep spacing indicates preplanned movement through the blind corridor.",
+          "el": "Footstep spacing indicates preplanned movement through the blind corridor."
+        }
+      ],
+      "contradiction_tests": [
+        {
+          "en": "A claim that camera coverage guaranteed identification at all times is technically false.",
+          "el": "A claim that camera coverage guaranteed identification at all times is technically false."
+        }
+      ]
+    },
+    {
+      "id": "F_SPIROS_ORDER",
+      "summary": {
+        "en": "Call logs show Spiros issuing timing instructions to Tasos before and after the abduction.",
+        "el": "Call logs show Spiros issuing timing instructions to Tasos before and after the abduction."
+      },
+      "detail": {
+        "en": "Two short calls bracket the capture window and one call confirms drop-site relocation.",
+        "el": "Two short calls bracket the capture window and one call confirms drop-site relocation."
+      },
+      "micro_details": [
+        {
+          "en": "Call bursts occur at 19:37, 19:44, and 20:11 with low-duration command cadence.",
+          "el": "Call bursts occur at 19:37, 19:44, and 20:11 with low-duration command cadence."
+        },
+        {
+          "en": "Language pattern shows imperative verbs and route shorthand, not casual speech.",
+          "el": "Language pattern shows imperative verbs and route shorthand, not casual speech."
+        }
+      ],
+      "contradiction_tests": [
+        {
+          "en": "A claim that Spiros had no command role conflicts with timing and cadence of outbound calls.",
+          "el": "A claim that Spiros had no command role conflicts with timing and cadence of outbound calls."
+        }
+      ]
+    },
+    {
+      "id": "F_ESCAPE_ROUTE",
+      "summary": {
+        "en": "Route sketch and toll timing place Spiros near the holding site corridor.",
+        "el": "Route sketch and toll timing place Spiros near the holding site corridor."
+      },
+      "detail": {
+        "en": "Travel timing is incompatible with his claimed villa-only timeline.",
+        "el": "Travel timing is incompatible with his claimed villa-only timeline."
+      },
+      "micro_details": [
+        {
+          "en": "Toll-camera timestamp at 20:52 leaves insufficient time for a continuous villa stay.",
+          "el": "Toll-camera timestamp at 20:52 leaves insufficient time for a continuous villa stay."
+        },
+        {
+          "en": "Route turn sequence matches notes found in folded glove-compartment map.",
+          "el": "Route turn sequence matches notes found in folded glove-compartment map."
+        }
+      ],
+      "contradiction_tests": [
+        {
+          "en": "Any villa-only alibi for Spiros between 20:45 and 21:05 fails route-timing constraints.",
+          "el": "Any villa-only alibi for Spiros between 20:45 and 21:05 fails route-timing constraints."
+        }
+      ]
+    },
+    {
+      "id": "F_MINUTE_CONTRADICTION_GRID",
+      "summary": {
+        "en": "Minute-by-minute contradiction grid shows impossible overlap across key alibis.",
+        "el": "Minute-by-minute contradiction grid shows impossible overlap across key alibis."
+      },
+      "detail": {
+        "en": "Tasos movement, Spiros calls, and warehouse door telemetry cannot all be innocent together.",
+        "el": "Tasos movement, Spiros calls, and warehouse door telemetry cannot all be innocent together."
+      },
+      "micro_details": [
+        {
+          "en": "At 19:44 Tasos receives command call while van is already on the route segment.",
+          "el": "At 19:44 Tasos receives command call while van is already on the route segment."
+        },
+        {
+          "en": "At 20:11 Spiros call overlaps with declared villa paperwork window.",
+          "el": "At 20:11 Spiros call overlaps with declared villa paperwork window."
+        },
+        {
+          "en": "At 21:03 warehouse transfer timing collides with claimed separate whereabouts.",
+          "el": "At 21:03 warehouse transfer timing collides with claimed separate whereabouts."
+        }
+      ],
+      "contradiction_tests": [
+        {
+          "en": "If Tasos was at villa, plate-linked van movement is unexplained.",
+          "el": "If Tasos was at villa, plate-linked van movement is unexplained."
+        },
+        {
+          "en": "If Spiros never left villa, toll and call sequencing is unexplained.",
+          "el": "If Spiros never left villa, toll and call sequencing is unexplained."
+        },
+        {
+          "en": "If warehouse was empty, rear-door open telemetry and shadow transfer are unexplained.",
+          "el": "If warehouse was empty, rear-door open telemetry and shadow transfer are unexplained."
+        }
+      ]
+    }
+  ],
+  "statement_scripts": [
+    {
+      "id": "ST_TASOS_PLATE",
+      "character_id": "tasos",
+      "strategies": [
+        "bluff",
+        "pressure",
+        "evidence_push"
+      ],
+      "require_fact_ids": [
+        "F_PLATE_TO_TASOS"
+      ],
+      "text": {
+        "en": "Fine. Spiros told me to swap the plate before dusk and keep quiet about lane C.",
+        "el": "Fine. Spiros told me to swap the plate before dusk and keep quiet about lane C."
+      },
+      "evidence_label": {
+        "en": "recorded statement: plate swap order",
+        "el": "recorded statement: plate swap order"
+      }
+    },
+    {
+      "id": "ST_KATERINA_ZIP",
+      "character_id": "katerina",
+      "strategies": [
+        "bluff",
+        "evidence_push"
+      ],
+      "require_fact_ids": [
+        "F_ZIP_TIE_BRAND"
+      ],
+      "text": {
+        "en": "Those restraints came from warehouse stock. I did not plan the grab, but Spiros asked for unlogged access.",
+        "el": "Those restraints came from warehouse stock. I did not plan the grab, but Spiros asked for unlogged access."
+      },
+      "evidence_label": {
+        "en": "recorded statement: unlogged warehouse access request",
+        "el": "recorded statement: unlogged warehouse access request"
+      }
+    },
+    {
+      "id": "ST_ELENA_CALL",
+      "character_id": "elena",
+      "strategies": [
+        "empathy",
+        "bluff",
+        "pressure"
+      ],
+      "require_fact_ids": [
+        "F_SPIROS_ORDER"
+      ],
+      "text": {
+        "en": "I heard Spiros direct Tasos on timing and location. I wanted this contained, but not like this.",
+        "el": "I heard Spiros direct Tasos on timing and location. I wanted this contained, but not like this."
+      },
+      "evidence_label": {
+        "en": "recorded statement: call timing acknowledgment",
+        "el": "recorded statement: call timing acknowledgment"
+      }
+    },
+    {
+      "id": "ST_SPIROS_BREAK",
+      "character_id": "spiros",
+      "strategies": [
+        "bluff",
+        "pressure"
+      ],
+      "require_fact_ids": [
+        "F_SPIROS_ORDER",
+        "F_ESCAPE_ROUTE"
+      ],
+      "text": {
+        "en": "I orchestrated the pickup for ransom leverage. The plan was control, not murder, and it collapsed in the warehouse.",
+        "el": "I orchestrated the pickup for ransom leverage. The plan was control, not murder, and it collapsed in the warehouse."
+      },
+      "evidence_label": {
+        "en": "recorded admission: orchestration and control plan",
+        "el": "recorded admission: orchestration and control plan"
+      }
+    }
+  ]
+}

@@ -2,6 +2,7 @@ import { randomUUID } from "crypto";
 import { getLocalized, localizePublicState, normalizeLanguage } from "./i18n.js";
 import { createStateFromCase, getCaseById, getCaseList } from "./cases.js";
 import { createDefaultMemory, normalizeMemory } from "./memory.js";
+import { createInvestigationState, normalizeInvestigationState } from "./investigation.js";
 
 const sessions = new Map();
 
@@ -112,6 +113,12 @@ export function buildStateFromClient({ caseId, clientState }) {
     return character;
   });
 
+  const incomingInvestigationState = clientState.investigation_state || state.investigation_state;
+  state.investigation_state = normalizeInvestigationState(incomingInvestigationState, state.case_id);
+  if (!state.investigation_state) {
+    state.investigation_state = createInvestigationState(state.case_id);
+  }
+
   return state;
 }
 
@@ -129,6 +136,10 @@ export function extractClientState(state) {
       knowledge: Array.isArray(character.knowledge) ? character.knowledge : [],
       memory: normalizeMemory(character.memory || createDefaultMemory())
     })),
+    investigation_state: normalizeInvestigationState(
+      state.investigation_state || createInvestigationState(state.case_id),
+      state.case_id
+    ),
     events: Array.isArray(state.events) ? state.events : [],
     detective_knowledge: Array.isArray(state.detective_knowledge) ? state.detective_knowledge : []
   };

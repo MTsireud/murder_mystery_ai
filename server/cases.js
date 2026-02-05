@@ -1,6 +1,7 @@
 import { getLocalized, normalizeLanguage } from "./i18n.js";
 import { createDefaultMemory, normalizeMemory } from "./memory.js";
 import { enrichStateFromCase } from "./story.js";
+import { createInvestigationState } from "./investigation.js";
 
 const loc = (en, el = en) => ({ en, el });
 
@@ -443,22 +444,28 @@ const CASE_LIBRARY = [
     headline: loc("A vanished heir and a rising ransom demand."),
     synopsis: loc("A disappearance, a ransom pipeline, and a family torn over silence."),
     plot: loc(
-      "A well-connected family reports their adult son missing after a night meeting. A familiar face manages the communications, urging silence while money changes hands."
+      "A well-connected family reports their adult son missing after a night meeting. Gate cameras, access logs, route timing, and warehouse shadows point to a coordinated abduction hidden behind family logistics and controlled calls."
     ),
     solution: loc(
-      "The family friend staged the abduction and ordered an accomplice to keep the victim subdued, leading to a fatal outcome during captivity."
+      "Spiros staged the abduction, directed Tasos through timed calls, and used warehouse access through Katerina's operation. The restraint plan escalated in captivity, causing fatal suffocation while Spiros managed the ransom narrative."
     ),
     truth: {
       killer_id: "spiros",
       method: "abduction followed by suffocation in captivity",
       motive: "ransom extraction and debt pressure",
       timeline: [
-        "7:20 PM the victim leaves a seaside cafe",
-        "7:40 PM the abduction happens in a parking lot",
-        "8:10 PM the first ransom call is placed",
+        "7:18 PM Nikos settles the bill at Alkyon Seaside Cafe",
+        "7:20 PM Nikos leaves the cafe and heads toward Gate 2",
+        "7:34 PM a dark van enters the marina lot from a blind feeder lane",
+        "7:40 PM the abduction happens in the parking lot near lane C",
+        "7:43 PM the van exits with lights cut before the coastal bend",
+        "8:10 PM the first ransom call is placed from a routed family line",
+        "8:35 PM Elena places a delayed police contact under pressure",
+        "9:05 PM after-hours warehouse rear-door access is logged as maintenance",
+        "10:12 PM drop-route timing confirms movement near the holding corridor",
         "10:30 PM the victim is harmed during confinement"
       ],
-      planted_evidence: ["burner phone", "discarded zip ties"]
+      planted_evidence: ["burner phone", "discarded zip ties", "temporary plate reassignment memo"]
     },
     public_state: {
       victim_name: loc("Nikos Asteri"),
@@ -3133,6 +3140,7 @@ export function createStateFromCase(caseData) {
       case_briefing_source: data.public_state?.case_briefing_source || "library"
     },
     characters,
+    investigation_state: createInvestigationState(data.id),
     events: [],
     detective_knowledge: []
   };

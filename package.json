@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "node server/index.js",
-    "generate:athens-portraits": "node scripts/generate_athens_portraits.mjs"
+    "generate:athens-portraits": "node scripts/generate_athens_portraits.mjs",
+    "construct:casepack": "node scripts/construct_casepack.mjs"
   },
   "dependencies": {
     "dotenv": "^16.4.5",
