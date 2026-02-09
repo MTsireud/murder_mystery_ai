@@ -65,8 +65,8 @@
         </div>
       </header>
 
-      <main class="grid">
-        <section class="panel chat">
+      <main id="mainGrid" class="grid">
+        <section id="panelChat" class="panel chat" data-mobile-panel="chat">
           <div class="chat-tabs">
             <button id="chatTabCase" class="chat-tab active" type="button" data-i18n="chatTabCase">
               Interrogation
@@ -93,7 +93,7 @@
           </form>
         </section>
 
-        <section class="panel characters">
+        <section id="panelCharacters" class="panel characters" data-mobile-panel="characters">
           <h2 data-i18n="characters">Characters</h2>
           <div id="characterList" class="character-list"></div>
           <div class="character-divider" data-i18n="caseAdvisors">Advisors</div>
@@ -106,7 +106,7 @@
           <button id="resetBtn" class="ghost" data-i18n="resetCase">Reset Case</button>
         </section>
 
-        <section class="panel intel">
+        <section id="panelIntel" class="panel intel" data-mobile-panel="intel">
           <h2 data-i18n="publicIntel">Public Intel</h2>
           <div class="intel-block">
             <h3 data-i18n="accusations">Accusations</h3>
@@ -118,7 +118,7 @@
           </div>
         </section>
 
-        <section class="panel scene-lab">
+        <section id="panelScene" class="panel scene-lab" data-mobile-panel="scene">
           <div class="panel-head">
             <h2 data-i18n="sceneLabTitle">Location Control</h2>
             <span class="scene-pill" data-i18n="sceneLabQueued">Travel + inspect</span>
@@ -191,7 +191,7 @@
           </div>
         </section>
 
-        <section class="panel solution">
+        <section id="panelSolution" class="panel solution" data-mobile-panel="solution">
           <h2 data-i18n="solutionTitle">Case Resolution</h2>
           <p class="solution-hint" data-i18n="solutionHint">
             Submit your full theory and include every character.
@@ -228,6 +228,29 @@
           <div id="solutionResult" class="solution-result"></div>
         </section>
       </main>
+
+      <nav id="mobileDock" class="mobile-dock" aria-label="Mobile navigation">
+        <button class="mobile-dock-btn active" type="button" data-mobile-target="scene" data-i18n="mobileDockScene">
+          Scene
+        </button>
+        <button class="mobile-dock-btn" type="button" data-mobile-target="chat" data-i18n="mobileDockChat">
+          Interrogate
+        </button>
+        <button
+          class="mobile-dock-btn"
+          type="button"
+          data-mobile-target="characters"
+          data-i18n="mobileDockCharacters"
+        >
+          Contacts
+        </button>
+        <button class="mobile-dock-btn" type="button" data-mobile-target="intel" data-i18n="mobileDockIntel">
+          Intel
+        </button>
+        <button class="mobile-dock-btn" type="button" data-mobile-target="solution" data-i18n="mobileDockSolve">
+          Solve
+        </button>
+      </nav>
     </div>
 
     <button id="skillsDrawerTab" class="drawer-tab" type="button" data-i18n="caseDrawerTab" hidden>

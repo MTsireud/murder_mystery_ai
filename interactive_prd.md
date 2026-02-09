@@ -440,9 +440,9 @@ Dependencies:
 - [x] D5. Add prompt insertion chips from suggested prompts in `/Users/markostsirekas/codex/murder_mystery/public/app.js`.
 - [x] D6. Ensure transition overlay shows on move and clears on scene ready.
 - [x] D7. Add i18n keys in `/Users/markostsirekas/codex/murder_mystery/public/i18n.js`.
-- [ ] D8. Refactor interrogation renderer in `/Users/markostsirekas/codex/murder_mystery/public/app.js` to show only active character thread in Interrogation mode.
-- [ ] D9. Add thread switch behavior on character card selection (preserve scroll/position per thread).
-- [ ] D10. Add Case/System thread toggle for movement/observation logs.
+- [x] D8. Refactor interrogation renderer in `/Users/markostsirekas/codex/murder_mystery/public/app.js` to show only active character thread in Interrogation mode.
+- [x] D9. Add thread switch behavior on character card selection (preserve scroll/position per thread).
+- [x] D10. Add Case/System thread toggle for movement/observation logs.
 
 Dependencies:
 1. D3 depends on B2/B5.
@@ -604,11 +604,11 @@ Animation policy:
 ### 18.6 Additions to Engineering Tasks (UI/UX + Mobile)
 
 Add to Phase D:
-- [ ] D8. Implement mobile-first bottom sheet for observation card details in `/Users/markostsirekas/codex/murder_mystery/public/index.html` + `/Users/markostsirekas/codex/murder_mystery/public/styles.css`.
-- [ ] D9. Replace hover-only pin affordances with tap-first interactions in `/Users/markostsirekas/codex/murder_mystery/public/app.js`.
-- [ ] D10. Add reduced-motion fallback hooks in `/Users/markostsirekas/codex/murder_mystery/public/styles.css` and transition guards in `/Users/markostsirekas/codex/murder_mystery/public/app.js`.
-- [ ] D11. Add mobile safe-area and keyboard-safe composer behavior in `/Users/markostsirekas/codex/murder_mystery/public/styles.css`.
-- [ ] D12. Add optional settings toggle for haptics/sound cues in `/Users/markostsirekas/codex/murder_mystery/public/index.html`, `/Users/markostsirekas/codex/murder_mystery/public/app.js`, and `/Users/markostsirekas/codex/murder_mystery/public/i18n.js`.
+- [x] D8. Implement mobile-first bottom sheet for observation card details in `/Users/markostsirekas/codex/murder_mystery/public/index.html` + `/Users/markostsirekas/codex/murder_mystery/public/styles.css`.
+- [x] D9. Replace hover-only pin affordances with tap-first interactions in `/Users/markostsirekas/codex/murder_mystery/public/app.js`.
+- [x] D10. Add reduced-motion fallback hooks in `/Users/markostsirekas/codex/murder_mystery/public/styles.css` and transition guards in `/Users/markostsirekas/codex/murder_mystery/public/app.js`.
+- [x] D11. Add mobile safe-area and keyboard-safe composer behavior in `/Users/markostsirekas/codex/murder_mystery/public/styles.css`.
+- [x] D12. Add optional settings toggle for haptics/sound cues in `/Users/markostsirekas/codex/murder_mystery/public/index.html`, `/Users/markostsirekas/codex/murder_mystery/public/app.js`, and `/Users/markostsirekas/codex/murder_mystery/public/i18n.js`.
 
 Add to Phase F:
 - [ ] F7. Mobile usability QA pass on iOS Safari + Android Chrome (portrait first, landscape second).

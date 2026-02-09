@@ -39,6 +39,8 @@ const sceneFallbackEl = document.getElementById("sceneFallback");
 const sceneHotspotsEl = document.getElementById("sceneHotspots");
 const sceneTransitionOverlayEl = document.getElementById("sceneTransitionOverlay");
 const sceneMetaEl = document.getElementById("sceneMeta");
+const mainGridEl = document.getElementById("mainGrid");
+const mobileDockEl = document.getElementById("mobileDock");
 const scenePinListEl = document.getElementById("scenePinList");
 const observationListEl = document.getElementById("observationList");
 const observationPromptListEl = document.getElementById("observationPromptList");
@@ -123,6 +125,8 @@ let sceneTransitionClearTimer = null;
 let uiAudioContext = null;
 const chatScrollPositions = new Map();
 const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
+const mobileLayoutQuery = window.matchMedia("(max-width: 980px)");
+let mobilePanelScrollRaf = null;
 
 function invalidateCaseRequests() {
   caseRequestEpoch += 1;
@@ -200,6 +204,60 @@ function updateDebugOverlay(data) {
 
 function syncReducedMotionPreference() {
   appState.reducedMotion = Boolean(reducedMotionQuery.matches);
+}
+
+function isMobileLayout() {
+  return Boolean(mobileLayoutQuery.matches);
+}
+
+function getMobilePanelElements() {
+  if (!mainGridEl) return [];
+  return Array.from(mainGridEl.querySelectorAll("[data-mobile-panel]"));
+}
+
+function getMobilePanelById(panelId) {
+  if (!panelId || !mainGridEl) return null;
+  return mainGridEl.querySelector(`[data-mobile-panel="${panelId}"]`);
+}
+
+function setMobileDockActive(panelId) {
+  if (!mobileDockEl) return;
+  const target = String(panelId || "");
+  mobileDockEl.querySelectorAll("[data-mobile-target]").forEach((button) => {
+    const isActive = button.dataset.mobileTarget === target;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-pressed", isActive ? "true" : "false");
+  });
+}
+
+function scrollToMobilePanel(panelId, { behavior } = {}) {
+  if (!isMobileLayout()) return;
+  const panel = getMobilePanelById(panelId);
+  if (!panel) return;
+  panel.scrollIntoView({
+    behavior: behavior || getScrollBehavior(),
+    block: "nearest",
+    inline: "start"
+  });
+  setMobileDockActive(panelId);
+}
+
+function syncMobileDockFromScroll() {
+  if (!isMobileLayout() || !mainGridEl) return;
+  const panels = getMobilePanelElements();
+  if (!panels.length) return;
+  const viewportCenter = mainGridEl.scrollLeft + mainGridEl.clientWidth / 2;
+  let nearestId = panels[0].dataset.mobilePanel || "scene";
+  let nearestDistance = Number.POSITIVE_INFINITY;
+  panels.forEach((panel) => {
+    const panelCenter = panel.offsetLeft + panel.clientWidth / 2;
+    const distance = Math.abs(panelCenter - viewportCenter);
+    if (distance < nearestDistance) {
+      nearestDistance = distance;
+      nearestId = panel.dataset.mobilePanel || nearestId;
+    }
+  });
+  setMobileDockActive(nearestId);
 }
 
 const CLIENT_STATE_KEY = "clientState";
@@ -1555,6 +1613,9 @@ function setCaseThreadMode(mode) {
       triggerHapticCue(8);
     }
   }
+  if (isMobileLayout()) {
+    setMobileDockActive("chat");
+  }
 }
 
 function renderCaseChatLog() {
@@ -1904,6 +1965,9 @@ function setChatMode(mode) {
   }
   messageInput.placeholder = t(nextMode === "watson" ? "watsonPlaceholder" : "placeholder");
   renderChatLog();
+  if (isMobileLayout()) {
+    setMobileDockActive("chat");
+  }
 }
 
 function getSkillPriority(skill, metrics) {
@@ -2499,10 +2563,14 @@ async function sendWatsonMessage(message, { autoSwitch = false } = {}) {
 
 async function sendLocationAction(actionType, locationId = "") {
   if (!appState.caseId) return;
+  if (isMobileLayout()) {
+    setMobileDockActive("scene");
+  }
   const requestContext = createCaseRequestContext();
   const currentLocationId = appState.publicState?.current_location_id || "";
   const isMoveRequest = actionType === "move";
   const willChangeLocation = isMoveRequest && locationId && locationId !== currentLocationId;
+  closeObservationSheet();
   if (willChangeLocation) {
     const targetLocation = getLocationById(locationId);
     const selectedLabel = locationSelectEl?.selectedOptions?.[0]?.textContent || "";
@@ -2565,6 +2633,9 @@ async function sendLocationAction(actionType, locationId = "") {
 
 async function sendObserveAction(hotspotId, { openSheet = true } = {}) {
   if (!appState.caseId || !hotspotId) return;
+  if (isMobileLayout()) {
+    setMobileDockActive("scene");
+  }
   const locationId = appState.publicState?.current_location_id || "";
   if (!locationId) return;
   const requestContext = createCaseRequestContext();
@@ -2676,6 +2747,7 @@ chatForm.addEventListener("submit", async (event) => {
 });
 
 resetBtn.addEventListener("click", async () => {
+  closeObservationSheet();
   invalidateCaseRequests();
   const requestContext = createCaseRequestContext();
   const res = await fetch("/api/reset", {
@@ -2713,6 +2785,7 @@ resetBtn.addEventListener("click", async () => {
 const storedLang = localStorage.getItem("language");
 const storedModelMode = localStorage.getItem("modelMode");
 const browserLang = navigator.language || "en";
+syncReducedMotionPreference();
 appState.language = I18N.normalizeLanguage(storedLang || browserLang);
 appState.modelMode = storedModelMode || "auto";
 appState.skillsEnabled = localStorage.getItem("skillsEnabled") === "true";
@@ -2720,6 +2793,9 @@ appState.skillsDrawerOpen = localStorage.getItem("skillsDrawerOpen") === "true";
 appState.watsonFrequency = localStorage.getItem("watsonFrequency") || "normal";
 appState.watsonStyle = localStorage.getItem("watsonStyle") || "questions";
 appState.watsonQuality = Number(localStorage.getItem("watsonQuality")) || 70;
+appState.hapticsEnabled = localStorage.getItem("hapticsEnabled") === "true";
+appState.soundEnabled = localStorage.getItem("soundEnabled") === "true";
+appState.analyzeMode = localStorage.getItem("analyzeMode") === "true";
 appState.watsonLog = loadWatsonLog();
 languageSelect.value = appState.language;
 modelModeSelect.value = appState.modelMode;
@@ -2727,18 +2803,49 @@ if (skillsToggle) skillsToggle.checked = appState.skillsEnabled;
 if (watsonFrequencySelect) watsonFrequencySelect.value = appState.watsonFrequency;
 if (watsonStyleSelect) watsonStyleSelect.value = appState.watsonStyle;
 if (watsonQualityRange) watsonQualityRange.value = String(appState.watsonQuality);
+if (hapticsToggle) hapticsToggle.checked = appState.hapticsEnabled;
+if (soundToggle) soundToggle.checked = appState.soundEnabled;
+if (analyzeToggle) analyzeToggle.checked = appState.analyzeMode;
 applyTranslations();
 setSkillsFeatureEnabled(appState.skillsEnabled);
 if (appState.skillsEnabled && appState.skillsDrawerOpen) {
   openSkillsDrawer();
 }
 setChatMode(appState.chatMode);
+setMobileDockActive("scene");
 ensureDebugOverlay();
 appState.clientState = loadStoredClientState();
 if (appState.clientState?.case_id) {
   appState.caseId = appState.clientState.case_id;
 }
 loadState();
+if (isMobileLayout()) {
+  requestAnimationFrame(() => {
+    scrollToMobilePanel("scene", { behavior: "auto" });
+  });
+}
+
+if (mobileLayoutQuery?.addEventListener) {
+  mobileLayoutQuery.addEventListener("change", () => {
+    syncMobileDockFromScroll();
+  });
+} else if (mobileLayoutQuery?.addListener) {
+  mobileLayoutQuery.addListener(() => {
+    syncMobileDockFromScroll();
+  });
+}
+
+if (reducedMotionQuery?.addEventListener) {
+  reducedMotionQuery.addEventListener("change", () => {
+    syncReducedMotionPreference();
+    renderCurrentScene();
+  });
+} else if (reducedMotionQuery?.addListener) {
+  reducedMotionQuery.addListener(() => {
+    syncReducedMotionPreference();
+    renderCurrentScene();
+  });
+}
 
 languageSelect.addEventListener("change", () => {
   appState.language = I18N.normalizeLanguage(languageSelect.value);
@@ -2755,6 +2862,7 @@ caseSelect.addEventListener("change", async () => {
   invalidateCaseRequests();
   appState.caseId = nextCaseId;
   closeBriefingModal();
+  closeObservationSheet();
   const requestContext = createCaseRequestContext();
   const res = await fetch("/api/reset", {
     method: "POST",
@@ -2942,6 +3050,8 @@ if (watsonHintBtn) {
 if (moveLocationBtn) {
   moveLocationBtn.addEventListener("click", async () => {
     const targetId = locationSelectEl?.value || appState.publicState?.current_location_id || "";
+    triggerHapticCue(10);
+    playSoundCue("tap");
     await sendLocationAction("move", targetId);
   });
 }
@@ -2949,6 +3059,8 @@ if (moveLocationBtn) {
 if (inspectLocationBtn) {
   inspectLocationBtn.addEventListener("click", async () => {
     const currentId = appState.publicState?.current_location_id || locationSelectEl?.value || "";
+    triggerHapticCue(10);
+    playSoundCue("tap");
     await sendLocationAction("inspect", currentId);
   });
 }
@@ -2966,7 +3078,50 @@ if (sceneHotspotsEl) {
   sceneHotspotsEl.addEventListener("click", async (event) => {
     const hotspotBtn = event.target.closest("[data-hotspot-id]");
     if (!hotspotBtn) return;
-    await sendObserveAction(hotspotBtn.dataset.hotspotId);
+    const hotspotId = hotspotBtn.dataset.hotspotId;
+    selectHotspot(hotspotId);
+    triggerHapticCue(10);
+    playSoundCue("tap");
+    await sendObserveAction(hotspotId);
+  });
+}
+
+if (scenePinListEl) {
+  scenePinListEl.addEventListener("click", async (event) => {
+    const pinBtn = event.target.closest("[data-hotspot-id]");
+    if (!pinBtn) return;
+    const hotspotId = String(pinBtn.dataset.hotspotId || "");
+    if (!hotspotId) return;
+    selectHotspot(hotspotId);
+    triggerHapticCue(10);
+    playSoundCue("tap");
+    await sendObserveAction(hotspotId);
+  });
+}
+
+if (observationListEl) {
+  observationListEl.addEventListener("click", (event) => {
+    const promptBtn = event.target.closest("[data-observation-prompt]");
+    if (promptBtn) {
+      insertPromptInComposer(promptBtn.dataset.observationPrompt);
+      return;
+    }
+    const expandBtn = event.target.closest("[data-observation-expand]");
+    if (expandBtn) {
+      const hotspotId = String(expandBtn.dataset.observationExpand || "");
+      if (!hotspotId) return;
+      selectHotspot(hotspotId);
+      openObservationSheet(hotspotId);
+      triggerHapticCue(10);
+      playSoundCue("tap");
+      return;
+    }
+    const row = event.target.closest("[data-observation-source]");
+    if (!row) return;
+    const hotspotId = String(row.dataset.observationSource || "");
+    if (!hotspotId) return;
+    selectHotspot(hotspotId);
+    openObservationSheet(hotspotId);
   });
 }
 
@@ -2974,10 +3129,56 @@ if (observationPromptListEl) {
   observationPromptListEl.addEventListener("click", (event) => {
     const promptBtn = event.target.closest("[data-observation-prompt]");
     if (!promptBtn) return;
-    const prompt = String(promptBtn.dataset.observationPrompt || "").trim();
+    insertPromptInComposer(promptBtn.dataset.observationPrompt);
+  });
+}
+
+if (observationSheetEl) {
+  observationSheetEl.addEventListener("click", (event) => {
+    if (event.target.closest("[data-observation-sheet-close]")) {
+      closeObservationSheet();
+    }
+  });
+}
+
+if (observationSheetCloseBtn) {
+  observationSheetCloseBtn.addEventListener("click", () => {
+    closeObservationSheet();
+  });
+}
+
+if (observationSheetObserveBtn) {
+  observationSheetObserveBtn.addEventListener("click", async () => {
+    const hotspotId = String(observationSheetObserveBtn.dataset.hotspotId || "");
+    if (!hotspotId || observationSheetObserveBtn.disabled) return;
+    await sendObserveAction(hotspotId, { openSheet: true });
+  });
+}
+
+if (observationSheetUsePromptBtn) {
+  observationSheetUsePromptBtn.addEventListener("click", () => {
+    const prompt = String(observationSheetUsePromptBtn.dataset.prompt || "");
     if (!prompt) return;
-    messageInput.value = prompt;
-    messageInput.focus();
+    insertPromptInComposer(prompt);
+    closeObservationSheet();
+  });
+}
+
+if (observationSheetJumpBtn) {
+  observationSheetJumpBtn.addEventListener("click", () => {
+    const hotspotId = String(observationSheetJumpBtn.dataset.hotspotId || "");
+    if (!hotspotId) return;
+    scrollObservationSourceIntoView(hotspotId);
+    closeObservationSheet();
+  });
+}
+
+if (observationSheetPromptListEl) {
+  observationSheetPromptListEl.addEventListener("click", (event) => {
+    const promptBtn = event.target.closest("[data-observation-prompt]");
+    if (!promptBtn) return;
+    insertPromptInComposer(promptBtn.dataset.observationPrompt);
+    closeObservationSheet();
   });
 }
 
@@ -3021,10 +3222,67 @@ if (briefingModalEl) {
 
 document.addEventListener("keydown", (event) => {
   if (event.key !== "Escape") return;
-  if (!briefingModalEl || briefingModalEl.hidden) return;
-  event.preventDefault();
-  closeBriefingModal();
+  if (observationSheetEl && !observationSheetEl.hidden) {
+    event.preventDefault();
+    closeObservationSheet();
+    return;
+  }
+  if (briefingModalEl && !briefingModalEl.hidden) {
+    event.preventDefault();
+    closeBriefingModal();
+  }
 });
+
+if (analyzeToggle) {
+  analyzeToggle.addEventListener("change", () => {
+    appState.analyzeMode = Boolean(analyzeToggle.checked);
+    localStorage.setItem("analyzeMode", appState.analyzeMode);
+    renderCurrentScene();
+  });
+}
+
+if (hapticsToggle) {
+  hapticsToggle.addEventListener("change", () => {
+    appState.hapticsEnabled = Boolean(hapticsToggle.checked);
+    localStorage.setItem("hapticsEnabled", appState.hapticsEnabled);
+  });
+}
+
+if (soundToggle) {
+  soundToggle.addEventListener("change", () => {
+    appState.soundEnabled = Boolean(soundToggle.checked);
+    localStorage.setItem("soundEnabled", appState.soundEnabled);
+    playSoundCue("tap");
+  });
+}
+
+if (mobileDockEl) {
+  mobileDockEl.addEventListener("click", (event) => {
+    const btn = event.target.closest("[data-mobile-target]");
+    if (!btn) return;
+    const target = String(btn.dataset.mobileTarget || "");
+    if (!target) return;
+    scrollToMobilePanel(target);
+    triggerHapticCue(9);
+    playSoundCue("tap");
+  });
+}
+
+if (mainGridEl) {
+  mainGridEl.addEventListener("scroll", () => {
+    if (mobilePanelScrollRaf) return;
+    mobilePanelScrollRaf = requestAnimationFrame(() => {
+      mobilePanelScrollRaf = null;
+      syncMobileDockFromScroll();
+    });
+  }, { passive: true });
+}
+
+if (chatLogEl) {
+  chatLogEl.addEventListener("scroll", () => {
+    chatScrollPositions.set(getActiveThreadKey(), chatLogEl.scrollTop);
+  });
+}
 
 if (watsonChipBtn) {
   watsonChipBtn.addEventListener("click", () => {
