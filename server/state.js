@@ -1,3 +1,7 @@
+/**
+ * Manages in-memory sessions and provides serialization helpers between server state and client payloads.
+ * It is the bridge between canonical case state and the trimmed public/client representations.
+ */
 import { randomUUID } from "crypto";
 import { getLocalized, localizePublicState, normalizeLanguage } from "./i18n.js";
 import { createStateFromCase, getCaseById, getCaseList } from "./cases.js";
@@ -6,10 +10,12 @@ import { createInvestigationState, normalizeInvestigationState } from "./investi
 
 const sessions = new Map();
 
+// Seeds a new runtime state from a selected case id.
 function createSeedState(caseId) {
   return createStateFromCase(getCaseById(caseId));
 }
 
+// Creates a session envelope with id, timestamp, and seeded case state.
 function createSession({ id, caseId } = {}) {
   const sessionId = id || randomUUID();
   return {
@@ -19,6 +25,7 @@ function createSession({ id, caseId } = {}) {
   };
 }
 
+// Returns an existing session when present or creates and stores a new one.
 export function getOrCreateSession(id, caseId) {
   if (id && sessions.has(id)) {
     return sessions.get(id);
@@ -28,17 +35,20 @@ export function getOrCreateSession(id, caseId) {
   return session;
 }
 
+// Reads a session by id and returns null for missing ids.
 export function getSession(id) {
   if (!id) return null;
   return sessions.get(id) || null;
 }
 
+// Replaces a session state with a fresh seed while preserving/setting its id.
 export function resetSession(id, caseId) {
   const session = createSession({ id, caseId });
   sessions.set(session.id, session);
   return session;
 }
 
+// Builds a localized, client-safe view of state for UI responses.
 function buildPublicView(state, language, sessionId) {
   const lang = normalizeLanguage(language);
   return {
@@ -50,19 +60,26 @@ function buildPublicView(state, language, sessionId) {
       id: c.id,
       name: c.name,
       role: getLocalized(c.role, lang),
-      portrait: c.portrait_path || ""
+      portrait: c.portrait_path || "",
+      is_location_contact: Boolean(c.is_location_contact),
+      location_ids: Array.isArray(c?.presence?.location_ids)
+        ? c.presence.location_ids.filter(Boolean)
+        : []
     }))
   };
 }
 
+// Builds a public view directly from a stored session object.
 export function getPublicView(session, language) {
   return buildPublicView(session.state, language, session.id);
 }
 
+// Builds a public view from a raw state object outside session storage.
 export function getPublicViewForState(state, language, sessionId = null) {
   return buildPublicView(state, language, sessionId);
 }
 
+// Reconstructs trusted runtime state by overlaying allowed client fields onto a fresh case seed.
 export function buildStateFromClient({ caseId, clientState }) {
   const effectiveCaseId = caseId || clientState?.case_id;
   const state = createStateFromCase(getCaseById(effectiveCaseId));
@@ -80,6 +97,18 @@ export function buildStateFromClient({ caseId, clientState }) {
   }
   if (Array.isArray(publicState.tensions)) {
     state.public_state.tensions = publicState.tensions;
+  }
+  if (typeof publicState.current_location_id === "string") {
+    state.public_state.current_location_id = publicState.current_location_id;
+  }
+  if (Array.isArray(publicState.visited_location_ids)) {
+    state.public_state.visited_location_ids = publicState.visited_location_ids;
+  }
+  if (Array.isArray(publicState.location_intel_ids)) {
+    state.public_state.location_intel_ids = publicState.location_intel_ids;
+  }
+  if (Array.isArray(publicState.introduced_character_ids)) {
+    state.public_state.introduced_character_ids = publicState.introduced_character_ids;
   }
 
   if (Array.isArray(clientState.events)) {
@@ -122,6 +151,7 @@ export function buildStateFromClient({ caseId, clientState }) {
   return state;
 }
 
+// Extracts the minimal client payload shape from full runtime state.
 export function extractClientState(state) {
   return {
     case_id: state.case_id,
@@ -129,7 +159,17 @@ export function extractClientState(state) {
       time_minutes: state.public_state.time_minutes,
       discovered_evidence: state.public_state.discovered_evidence,
       public_accusations: state.public_state.public_accusations,
-      tensions: state.public_state.tensions
+      tensions: state.public_state.tensions,
+      current_location_id: state.public_state.current_location_id || "",
+      visited_location_ids: Array.isArray(state.public_state.visited_location_ids)
+        ? state.public_state.visited_location_ids
+        : [],
+      location_intel_ids: Array.isArray(state.public_state.location_intel_ids)
+        ? state.public_state.location_intel_ids
+        : [],
+      introduced_character_ids: Array.isArray(state.public_state.introduced_character_ids)
+        ? state.public_state.introduced_character_ids
+        : []
     },
     characters: state.characters.map((character) => ({
       id: character.id,

@@ -6,7 +6,11 @@
   "scripts": {
     "dev": "node server/index.js",
     "generate:athens-portraits": "node scripts/generate_athens_portraits.mjs",
-    "construct:casepack": "node scripts/construct_casepack.mjs"
+    "construct:casepack": "node scripts/construct_casepack.mjs",
+    "storylab:review": "node scripts/storylab_review.mjs",
+    "story:judge": "node scripts/story_judge.mjs",
+    "story:loop": "node scripts/story_quality_loop.mjs",
+    "story:all": "node scripts/story_quality_all.mjs"
   },
   "dependencies": {
     "dotenv": "^16.4.5",

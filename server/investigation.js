@@ -1,3 +1,7 @@
+/**
+ * Owns investigation progression rules, clue-chain unlocking, and optional constructor-based enrichment.
+ * It keeps truth-ledger anchors stable while translating detective turns into state deltas and prompt context.
+ */
 import { getLocalized, normalizeLanguage } from "./i18n.js";
 import { createResponse, getOpenAIClient } from "./openai.js";
 import fs from "fs";
@@ -113,12 +117,14 @@ const DETECTIVE_STRATEGY_KEYWORDS = {
   ]
 };
 
+// Defines clue chains, fact ledgers, and scripted statement gates for each supported case.
 const INVESTIGATION_LIBRARY = {
   "athens-2012-kidnapping": {
     clue_chain: [
       {
         id: "camera_evidence",
         requires: [],
+        location_ids: ["glyfada-marina-lot", "marina-kiosk"],
         triggers: [
           "camera",
           "cctv",
@@ -142,6 +148,7 @@ const INVESTIGATION_LIBRARY = {
       {
         id: "plate_check",
         requires: ["camera_evidence"],
+        location_ids: ["glyfada-marina-office"],
         triggers: [
           "plate",
           "license",
@@ -159,6 +166,7 @@ const INVESTIGATION_LIBRARY = {
       {
         id: "car_item",
         requires: ["plate_check"],
+        location_ids: ["glyfada-marina-lot"],
         triggers: [
           "search car",
           "inside the car",
@@ -182,6 +190,7 @@ const INVESTIGATION_LIBRARY = {
       {
         id: "warehouse_link",
         requires: ["car_item"],
+        location_ids: ["voss-warehouse"],
         triggers: [
           "warehouse",
           "loading bay",
@@ -200,6 +209,7 @@ const INVESTIGATION_LIBRARY = {
       {
         id: "killer_link",
         requires: ["warehouse_link"],
+        location_ids: ["asteri-villa", "glyfada-marina-office"],
         triggers: [
           "call log",
           "calls",
@@ -475,24 +485,29 @@ const INVESTIGATION_LIBRARY = {
   }
 };
 
+// Normalizes non-array inputs to an empty array for safer iteration.
 function ensureArray(value) {
   return Array.isArray(value) ? value : [];
 }
 
+// Deduplicates values while dropping falsy entries.
 function unique(list) {
   return Array.from(new Set(ensureArray(list).filter(Boolean)));
 }
 
+// Checks whether a lowercased message contains any keyword from a trigger set.
 function includesAny(lower, terms) {
   return ensureArray(terms).some((term) => lower.includes(String(term).toLowerCase()));
 }
 
+// Localizes a list of mixed localized/plain values into a clean string list.
 function localizeList(list, lang) {
   return ensureArray(list)
     .map((item) => getLocalized(item, lang))
     .filter(Boolean);
 }
 
+// Expands revealed fact ids into localized fact-summary lines for prompt context.
 function localizeFacts(config, factIds, lang) {
   const index = new Map(ensureArray(config?.truth_ledger).map((fact) => [fact.id, fact]));
   return unique(factIds)
@@ -511,19 +526,23 @@ function localizeFacts(config, factIds, lang) {
     .filter(Boolean);
 }
 
+// Returns the static investigation config for a case id.
 function getCaseConfig(caseId) {
   return INVESTIGATION_LIBRARY[caseId] || null;
 }
 
+// Deep-clones config objects before merging constructor output.
 function deepClone(value) {
   if (typeof structuredClone === "function") return structuredClone(value);
   return JSON.parse(JSON.stringify(value));
 }
 
+// Normalizes arbitrary lists into trimmed, unique strings.
 function normalizeStringList(list) {
   return unique(ensureArray(list).map((item) => String(item || "").trim()).filter(Boolean));
 }
 
+// Builds a reduced case snapshot for the constructor so truth anchors stay explicit.
 function buildConstructorContext(caseContext, baseConfig) {
   const truth = caseContext?.truth || {};
   const publicState = caseContext?.public_state || {};
@@ -558,6 +577,7 @@ function buildConstructorContext(caseContext, baseConfig) {
     clue_chain: ensureArray(baseConfig?.clue_chain).map((step) => ({
       id: step.id,
       requires: ensureArray(step.requires),
+      location_ids: ensureArray(step.location_ids),
       evidence: ensureArray(step.evidence).map((value) => getLocalized(value, "en")),
       leads: ensureArray(step.leads).map((value) => getLocalized(value, "en"))
     })),
@@ -569,6 +589,7 @@ function buildConstructorContext(caseContext, baseConfig) {
   };
 }
 
+// Calls the constructor model for additive details without changing base truth anchors.
 async function buildConstructorExtensions({ caseId, caseContext, baseConfig }) {
   if (!CONSTRUCTOR_ENABLED) return null;
   const client = getOpenAIClient();
@@ -613,6 +634,7 @@ async function buildConstructorExtensions({ caseId, caseContext, baseConfig }) {
   }
 }
 
+// Merges constructor-provided fact and step additions onto the base investigation config.
 function mergeConstructorExtensions(baseConfig, extensions) {
   if (!extensions || typeof extensions !== "object") return baseConfig;
   const merged = deepClone(baseConfig);
@@ -640,6 +662,24 @@ function mergeConstructorExtensions(baseConfig, extensions) {
   return merged;
 }
 
+// Reapplies step metadata that must remain identical to the shipped base config.
+function mergeStepMetadataFromBaseConfig(baseConfig, candidateConfig) {
+  if (!baseConfig || !candidateConfig || typeof candidateConfig !== "object") return candidateConfig;
+  const merged = deepClone(candidateConfig);
+  const baseStepMap = new Map(ensureArray(baseConfig.clue_chain).map((step) => [step.id, step]));
+  merged.clue_chain = ensureArray(merged.clue_chain).map((step) => {
+    const baseStep = baseStepMap.get(step?.id);
+    if (!baseStep) return step;
+    const nextStep = { ...step };
+    if (!Array.isArray(nextStep.location_ids) && Array.isArray(baseStep.location_ids)) {
+      nextStep.location_ids = ensureArray(baseStep.location_ids).slice();
+    }
+    return nextStep;
+  });
+  return merged;
+}
+
+// Resolves investigation config from cache, prebuilt pack, or constructor, then caches the result.
 async function getResolvedCaseConfig(caseId, caseContext) {
   const baseConfig = getCaseConfig(caseId);
   if (!baseConfig) return null;
@@ -651,8 +691,9 @@ async function getResolvedCaseConfig(caseId, caseContext) {
     try {
       const parsed = JSON.parse(fs.readFileSync(prebuiltPath, "utf8"));
       if (parsed && typeof parsed === "object") {
-        constructorCache.set(caseId, parsed);
-        return parsed;
+        const hydrated = mergeStepMetadataFromBaseConfig(baseConfig, parsed);
+        constructorCache.set(caseId, hydrated);
+        return hydrated;
       }
     } catch {
       // ignore malformed prebuilt pack and fall through to model construction
@@ -665,11 +706,13 @@ async function getResolvedCaseConfig(caseId, caseContext) {
     try {
       const extensions = await buildConstructorExtensions({ caseId, caseContext, baseConfig });
       const merged = mergeConstructorExtensions(baseConfig, extensions);
-      constructorCache.set(caseId, merged);
-      return merged;
+      const hydrated = mergeStepMetadataFromBaseConfig(baseConfig, merged);
+      constructorCache.set(caseId, hydrated);
+      return hydrated;
     } catch {
-      constructorCache.set(caseId, baseConfig);
-      return baseConfig;
+      const hydrated = mergeStepMetadataFromBaseConfig(baseConfig, baseConfig);
+      constructorCache.set(caseId, hydrated);
+      return hydrated;
     } finally {
       constructorInFlight.delete(caseId);
     }
@@ -679,10 +722,22 @@ async function getResolvedCaseConfig(caseId, caseContext) {
   return pending;
 }
 
-function stepAvailable(step, completedSet) {
-  return ensureArray(step.requires).every((stepId) => completedSet.has(stepId));
+// Enforces location gating for clue steps that are tied to specific scenes.
+function stepLocationMatches(step, activeLocationId) {
+  const locationIds = ensureArray(step?.location_ids);
+  if (!locationIds.length) return true;
+  if (!activeLocationId) return false;
+  return locationIds.includes(activeLocationId);
 }
 
+// Returns whether a clue step is currently unlockable given prerequisites and location.
+function stepAvailable(step, completedSet, activeLocationId = "") {
+  const requirementsMet = ensureArray(step.requires).every((stepId) => completedSet.has(stepId));
+  if (!requirementsMet) return false;
+  return stepLocationMatches(step, activeLocationId);
+}
+
+// Appends a strategy log entry and trims to the configured maximum window.
 function pushStrategyLog(log, entry) {
   log.push(entry);
   if (log.length > MAX_STRATEGY_LOG) {
@@ -690,6 +745,7 @@ function pushStrategyLog(log, entry) {
   }
 }
 
+// Classifies detective phrasing into strategy buckets used by statement scripts.
 export function detectDetectiveStrategy(message) {
   const text = String(message || "");
   const lower = text.toLowerCase();
@@ -706,6 +762,7 @@ export function detectDetectiveStrategy(message) {
   return { primary: "neutral", signals };
 }
 
+// Initializes empty investigation progress for a given case.
 export function createInvestigationState(caseId) {
   const config = getCaseConfig(caseId);
   if (!config) return null;
@@ -719,6 +776,7 @@ export function createInvestigationState(caseId) {
   };
 }
 
+// Coerces arbitrary persisted investigation data into a safe, bounded shape.
 export function normalizeInvestigationState(input, caseId) {
   const config = getCaseConfig(caseId);
   if (!config) return null;
@@ -735,6 +793,7 @@ export function normalizeInvestigationState(input, caseId) {
   };
 }
 
+// Applies one detective turn by unlocking clues, updating facts, and building prompt guidance.
 export async function applyInvestigationTurn({
   caseId,
   investigationState,
@@ -765,18 +824,42 @@ export async function applyInvestigationTurn({
 
   const lower = String(message || "").toLowerCase();
   const completedSet = new Set(nextState.completed_step_ids);
+  const caseLocations = ensureArray(caseContext?.public_state?.case_locations);
+  const locationNameById = new Map(
+    caseLocations
+      .filter((entry) => entry?.id)
+      .map((entry) => [entry.id, getLocalized(entry.name, lang) || entry.id])
+  );
+  const locationNameByIdEn = new Map(
+    caseLocations
+      .filter((entry) => entry?.id)
+      .map((entry) => [entry.id, getLocalized(entry.name, "en") || entry.id])
+  );
+  const locationNameByIdEl = new Map(
+    caseLocations
+      .filter((entry) => entry?.id)
+      .map((entry) => [entry.id, getLocalized(entry.name, "el") || entry.id])
+  );
+  const activeLocationId = String(caseContext?.public_state?.current_location_id || "").trim();
+  const activeLocationName = locationNameById.get(activeLocationId) || activeLocationId || "-";
   let unlockedStep = null;
   let blockedStep = null;
+  let blockedReason = "";
 
   for (const step of ensureArray(config.clue_chain)) {
     if (completedSet.has(step.id)) continue;
     const matched = includesAny(lower, step.triggers);
     if (!matched) continue;
-    if (stepAvailable(step, completedSet)) {
+    const requiresMet = ensureArray(step.requires).every((stepId) => completedSet.has(stepId));
+    const locationMet = stepLocationMatches(step, activeLocationId);
+    if (requiresMet && locationMet) {
       unlockedStep = step;
       break;
     }
-    if (!blockedStep) blockedStep = step;
+    if (!blockedStep) {
+      blockedStep = step;
+      blockedReason = !requiresMet ? "requirements" : "location";
+    }
   }
 
   let evidenceDelta = [];
@@ -816,13 +899,35 @@ export async function applyInvestigationTurn({
 
   const pending = ensureArray(config.clue_chain).find((step) => {
     if (nextState.completed_step_ids.includes(step.id)) return false;
-    return stepAvailable(step, new Set(nextState.completed_step_ids));
+    return ensureArray(step.requires).every((stepId) => nextState.completed_step_ids.includes(stepId));
+  });
+  const pendingAtLocation = ensureArray(config.clue_chain).find((step) => {
+    if (nextState.completed_step_ids.includes(step.id)) return false;
+    return stepAvailable(step, new Set(nextState.completed_step_ids), activeLocationId);
   });
 
-  const blockedHint = blockedStep
-    ? [loc("that lead is blocked until earlier evidence is confirmed")]
-    : [];
-  const openLeads = localizeList((pending && pending.leads) || [], lang).concat(
+  let blockedHint = [];
+  if (blockedStep && blockedReason === "requirements") {
+    blockedHint = [loc("that lead is blocked until earlier evidence is confirmed")];
+  } else if (blockedStep && blockedReason === "location") {
+    const requiredIds = ensureArray(blockedStep.location_ids);
+    const requiredEn = requiredIds
+      .map((id) => locationNameByIdEn.get(id) || id)
+      .filter(Boolean)
+      .join(", ");
+    const requiredEl = requiredIds
+      .map((id) => locationNameByIdEl.get(id) || id)
+      .filter(Boolean)
+      .join(", ");
+    blockedHint = [
+      loc(
+        `this lead needs on-site checks at ${requiredEn || "the relevant location"}`,
+        `αυτό το ίχνος θέλει επιτόπιο έλεγχο σε ${requiredEl || "τη σχετική τοποθεσία"}`
+      )
+    ];
+  }
+
+  const openLeads = localizeList(((pendingAtLocation || pending) && (pendingAtLocation || pending).leads) || [], lang).concat(
     localizeList(blockedHint, lang)
   );
 
@@ -831,6 +936,8 @@ export async function applyInvestigationTurn({
     chain_progress: `${nextState.completed_step_ids.length}/${ensureArray(config.clue_chain).length}`,
     revealed_facts: localizeFacts(config, nextState.revealed_fact_ids, lang),
     open_leads: openLeads,
+    active_location: activeLocationName,
+    blocked_reason: blockedReason || "",
     recent_strategies: ensureArray(nextState.strategy_log)
       .slice(-4)
       .map((entry) => entry.strategy)
@@ -845,6 +952,7 @@ export async function applyInvestigationTurn({
   };
 }
 
+// Public helper to resolve a hydrated investigation config for tooling endpoints.
 export async function constructCaseConfig(caseId, caseContext) {
   return getResolvedCaseConfig(caseId, caseContext);
 }

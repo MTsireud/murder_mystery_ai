@@ -1,3 +1,4 @@
+import "dotenv/config";
 import { getCaseList } from "../server/cases.js";
 
 export default function handler(req, res) {

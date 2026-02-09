@@ -19,9 +19,18 @@ const revealToggle = document.getElementById("revealToggle");
 const checkSolutionBtn = document.getElementById("checkSolutionBtn");
 const solutionResultEl = document.getElementById("solutionResult");
 const caseHeadlineEl = document.getElementById("caseHeadline");
+const openBriefingBtn = document.getElementById("openBriefingBtn");
+const openNarrationBtn = document.getElementById("openNarrationBtn");
 const chatTabCase = document.getElementById("chatTabCase");
 const chatTabWatson = document.getElementById("chatTabWatson");
+const watsonHintBtn = document.getElementById("watsonHintBtn");
 const watsonCard = document.getElementById("watsonCard");
+const currentLocationValueEl = document.getElementById("currentLocationValue");
+const locationSelectEl = document.getElementById("locationSelect");
+const moveLocationBtn = document.getElementById("moveLocationBtn");
+const inspectLocationBtn = document.getElementById("inspectLocationBtn");
+const visitedLocationsListEl = document.getElementById("visitedLocationsList");
+const locationContactsListEl = document.getElementById("locationContactsList");
 const skillsToggle = document.getElementById("skillsToggle");
 const skillsDrawer = document.getElementById("skillsDrawer");
 const skillsDrawerTab = document.getElementById("skillsDrawerTab");
@@ -42,6 +51,16 @@ const watsonQualityRange = document.getElementById("watsonQuality");
 const watsonSuggestionEl = document.getElementById("watsonSuggestion");
 const watsonChipBtn = document.getElementById("watsonChip");
 const watsonEmptyEl = document.getElementById("watsonEmpty");
+const briefingModalEl = document.getElementById("briefingModal");
+const briefingCloseBtn = document.getElementById("briefingCloseBtn");
+const briefingFolderTab = document.getElementById("briefingFolderTab");
+const briefingWatsonTab = document.getElementById("briefingWatsonTab");
+const briefingFolderView = document.getElementById("briefingFolderView");
+const briefingWatsonView = document.getElementById("briefingWatsonView");
+const debugOverlayEnabled = window.location.search.includes("debug=1");
+if (debugOverlayEnabled) {
+  localStorage.setItem("debugOverlay", "true");
+}
 
 const appState = {
   sessionId: null,
@@ -61,8 +80,86 @@ const appState = {
   expandedSkillId: null,
   watsonFrequency: "off",
   watsonStyle: "questions",
-  watsonQuality: 70
+  watsonQuality: 70,
+  briefingMode: "folder"
 };
+
+let caseRequestEpoch = 0;
+let stateLoadRequestId = 0;
+
+function invalidateCaseRequests() {
+  caseRequestEpoch += 1;
+  stateLoadRequestId += 1;
+}
+
+function createCaseRequestContext() {
+  return {
+    caseId: appState.caseId || null,
+    epoch: caseRequestEpoch
+  };
+}
+
+function getResponseCaseId(data) {
+  if (!data || typeof data !== "object") return null;
+  if (typeof data.case_id === "string" && data.case_id) return data.case_id;
+  const clientCaseId = data.client_state?.case_id;
+  if (typeof clientCaseId === "string" && clientCaseId) return clientCaseId;
+  return null;
+}
+
+function shouldIgnoreCaseResponse(context, data = null) {
+  if (!context) return false;
+  if (context.epoch !== caseRequestEpoch) return true;
+  if (context.caseId && appState.caseId && context.caseId !== appState.caseId) return true;
+  const responseCaseId = getResponseCaseId(data);
+  if (responseCaseId && context.caseId && responseCaseId !== context.caseId) return true;
+  return false;
+}
+
+let debugOverlayEl = null;
+
+function isDebugOverlayEnabled() {
+  return localStorage.getItem("debugOverlay") === "true";
+}
+
+function ensureDebugOverlay() {
+  if (!isDebugOverlayEnabled()) return;
+  if (debugOverlayEl) return;
+  debugOverlayEl = document.createElement("div");
+  debugOverlayEl.id = "debugOverlay";
+  debugOverlayEl.style.position = "fixed";
+  debugOverlayEl.style.right = "12px";
+  debugOverlayEl.style.bottom = "12px";
+  debugOverlayEl.style.maxWidth = "360px";
+  debugOverlayEl.style.background = "rgba(20, 20, 20, 0.9)";
+  debugOverlayEl.style.color = "#e6e6e6";
+  debugOverlayEl.style.fontSize = "12px";
+  debugOverlayEl.style.padding = "10px";
+  debugOverlayEl.style.borderRadius = "8px";
+  debugOverlayEl.style.zIndex = "9999";
+  debugOverlayEl.style.whiteSpace = "pre-wrap";
+  debugOverlayEl.style.fontFamily = "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace";
+  debugOverlayEl.textContent = "Debug overlay enabled. Waiting for /api/turn...";
+  document.body.appendChild(debugOverlayEl);
+}
+
+function updateDebugOverlay(data) {
+  if (!isDebugOverlayEnabled()) return;
+  ensureDebugOverlay();
+  if (!debugOverlayEl) return;
+  const debug = data?.debug_meta || {};
+  const lines = [
+    `model_used: ${data?.model_used || "-"}`,
+    `model_mock: ${data?.model_mock ? "true" : "false"}`,
+    `intent: ${debug.intent || "-"}`,
+    `style: ${debug.response_style || "-"}`,
+    `fallback: ${debug.used_fallback ? "yes" : "no"}`,
+    `prompt_chars: ${debug.prompt_chars ?? "-"}`,
+    `must_include: ${debug.must_include_count ?? 0}`,
+    `dialogue_len: ${data?.dialogue ? data.dialogue.length : 0}`
+  ];
+  debugOverlayEl.textContent = lines.join("\n");
+}
 
 const CLIENT_STATE_KEY = "clientState";
 const CLIENT_STATE_STORAGE_VERSION = 2;
@@ -363,6 +460,32 @@ function getStoredActiveCharacter(caseId) {
   return map[caseId] || null;
 }
 
+function loadBriefingSeenByCase() {
+  const raw = localStorage.getItem("briefingSeenByCase");
+  if (!raw) return {};
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return {};
+  }
+}
+
+function storeBriefingSeenByCase(map) {
+  localStorage.setItem("briefingSeenByCase", JSON.stringify(map || {}));
+}
+
+function markBriefingSeen(caseId) {
+  if (!caseId) return;
+  const map = loadBriefingSeenByCase();
+  map[caseId] = true;
+  storeBriefingSeenByCase(map);
+}
+
+function hasSeenBriefing(caseId) {
+  if (!caseId) return false;
+  return Boolean(loadBriefingSeenByCase()[caseId]);
+}
+
 function t(key, vars) {
   return I18N.t(appState.language, key, vars);
 }
@@ -427,6 +550,15 @@ function escapeRegExp(value) {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
+function escapeHtml(value) {
+  return String(value || "")
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
 function getSpeakerNameForEvent(event) {
   if (!event) return null;
   if (event.type === "detective_message") {
@@ -445,7 +577,9 @@ function getSpeakerNameForEvent(event) {
 function buildSkillsContext(board) {
   const activeName = appState.characters.find((c) => c.id === appState.activeCharacterId)?.name;
   const caseTime = appState.publicState?.case_time || t("skillsPlaceholderTime");
-  const location = appState.publicState?.case_location || t("skillsPlaceholderLocation");
+  const location = appState.publicState?.current_location_name
+    || appState.publicState?.case_location
+    || t("skillsPlaceholderLocation");
   const victim = appState.publicState?.victim_name || t("skillsPlaceholderVictim");
   const timeWindow = board.timelineGaps[0]
     ? `${board.timelineGaps[0].start}-${board.timelineGaps[0].end}`
@@ -594,6 +728,32 @@ function buildBoardState() {
   };
 }
 
+function getLocationById(locationId) {
+  const locations = Array.isArray(appState.publicState?.case_locations)
+    ? appState.publicState.case_locations
+    : [];
+  return locations.find((entry) => entry.id === locationId) || null;
+}
+
+function isCharacterVisibleAtCurrentLocation(character) {
+  if (!character) return false;
+  const locationIds = Array.isArray(character.location_ids)
+    ? character.location_ids.filter(Boolean)
+    : [];
+  if (!locationIds.length) return true;
+  const currentId = appState.publicState?.current_location_id || "";
+  if (!currentId) return true;
+  return locationIds.includes(currentId);
+}
+
+function getVisibleCharacters() {
+  return appState.characters.filter((character) => isCharacterVisibleAtCurrentLocation(character));
+}
+
+function getOnSiteContacts() {
+  return getVisibleCharacters().filter((character) => character.is_location_contact);
+}
+
 function appendMessage(text, type) {
   const messageEl = document.createElement("div");
   messageEl.className = `message ${type}`;
@@ -710,6 +870,127 @@ function renderCaseIntro() {
   `;
 }
 
+function getBriefingSections() {
+  const sections = appState.publicState?.case_intro?.[appState.language];
+  if (Array.isArray(sections) && sections.length) return sections;
+  return [];
+}
+
+function buildWatsonNarrationLines() {
+  const state = appState.publicState || {};
+  const victim = state.victim_name || t("skillsPlaceholderVictim");
+  const scene = state.current_location_name || state.case_location || t("skillsPlaceholderLocation");
+  const caseTime = state.case_time || t("skillsPlaceholderTime");
+  const contacts = getOnSiteContacts().map((character) => character.name).slice(0, 2);
+  const contactsText = contacts.length ? contacts.join(", ") : null;
+  if (appState.language === "el") {
+    return [
+      `Ο φάκελος ανοίγει ήσυχα. Το θύμα είναι ο/η ${victim}.`,
+      `Η σκηνή που μας καίει τώρα: ${scene}, γύρω στις ${caseTime}.`,
+      contactsText
+        ? `Κράτα κοντά τις τοπικές επαφές, ειδικά ${contactsText}.`
+        : "Αν κολλήσεις, γύρνα στη σκηνή και κοίτα το πιο απλό στοιχείο πρώτα.",
+      "Μικρό αίνιγμα, καθαρό βήμα: το δωμάτιο μιλά όταν το ρωτήσεις σωστά."
+    ];
+  }
+  return [
+    `The case folder opens quietly. The victim is ${victim}.`,
+    `Our pressure point right now is ${scene}, around ${caseTime}.`,
+    contactsText
+      ? `Keep your local contacts close, especially ${contactsText}.`
+      : "If you get stuck, return to the scene and check the simplest detail first.",
+    "Light riddle, clear move: a room tells the truth when pressed the right way."
+  ];
+}
+
+function renderBriefingFolderView() {
+  if (!briefingFolderView) return;
+  const sections = getBriefingSections();
+  const pagesHtml = sections
+    .map((section, index) => {
+      const title = escapeHtml(section?.title || `Section ${index + 1}`);
+      const lines = Array.isArray(section?.lines) ? section.lines : [];
+      const lineItems = lines.map((line) => `<li>${escapeHtml(line)}</li>`).join("");
+      return `
+        <article class="briefing-page" style="animation-delay:${Math.min(index * 0.05, 0.25)}s">
+          <h4>${title}</h4>
+          <ul>${lineItems || `<li>${escapeHtml(I18N.t(appState.language, "caseIntroNoReason"))}</li>`}</ul>
+        </article>
+      `;
+    })
+    .join("");
+  const cast = appState.characters
+    .filter((character) => !character.is_location_contact)
+    .slice(0, 6)
+    .map((character) => `
+      <div class="briefing-cast-item">
+        <strong>${escapeHtml(character.name)}</strong>
+        <span>${escapeHtml(character.role || "")}</span>
+      </div>
+    `)
+    .join("");
+
+  briefingFolderView.innerHTML = `
+    <div class="briefing-book">
+      ${pagesHtml}
+      <article class="briefing-page">
+        <h4>${escapeHtml(I18N.t(appState.language, "characters"))}</h4>
+        <div class="briefing-cast">
+          ${cast || `<p>${escapeHtml(I18N.t(appState.language, "skillsEmptyRelationships"))}</p>`}
+        </div>
+      </article>
+    </div>
+  `;
+}
+
+function renderBriefingWatsonView() {
+  if (!briefingWatsonView) return;
+  const lines = buildWatsonNarrationLines();
+  briefingWatsonView.innerHTML = `
+    <div class="briefing-narration">
+      <span class="narrator">Watson</span>
+      ${lines.map((line) => `<p class="line">${escapeHtml(line)}</p>`).join("")}
+    </div>
+  `;
+}
+
+function setBriefingMode(mode) {
+  const next = mode === "watson" ? "watson" : "folder";
+  appState.briefingMode = next;
+  if (briefingFolderTab) {
+    briefingFolderTab.classList.toggle("active", next === "folder");
+  }
+  if (briefingWatsonTab) {
+    briefingWatsonTab.classList.toggle("active", next === "watson");
+  }
+  if (briefingFolderView) {
+    briefingFolderView.hidden = next !== "folder";
+  }
+  if (briefingWatsonView) {
+    briefingWatsonView.hidden = next !== "watson";
+  }
+}
+
+function openBriefingModal(mode = "folder") {
+  if (!briefingModalEl) return;
+  renderBriefingFolderView();
+  renderBriefingWatsonView();
+  setBriefingMode(mode);
+  briefingModalEl.hidden = false;
+  markBriefingSeen(appState.caseId);
+}
+
+function closeBriefingModal() {
+  if (!briefingModalEl) return;
+  briefingModalEl.hidden = true;
+}
+
+function maybeAutoOpenBriefing() {
+  if (!appState.caseId) return;
+  if (hasSeenBriefing(appState.caseId)) return;
+  openBriefingModal("folder");
+}
+
 function renderCaseChatLog() {
   const events = appState.clientState?.events || [];
   chatLogEl.innerHTML = "";
@@ -725,6 +1006,11 @@ function renderCaseChatLog() {
     }
     if (event.type === "character_response") {
       appendMessage(event.content, "character");
+      return;
+    }
+    if (event.type === "detective_move" || event.type === "location_note" || event.type === "character_intro") {
+      appendMessage(event.content, "system");
+      return;
     }
   });
 }
@@ -750,7 +1036,8 @@ function renderChatLog() {
 
 function renderCharacters() {
   characterListEl.innerHTML = "";
-  appState.characters.forEach((character) => {
+  const visibleCharacters = getVisibleCharacters();
+  visibleCharacters.forEach((character) => {
     const card = document.createElement("div");
     card.className = "character-card";
     if (character.id === appState.activeCharacterId) {
@@ -783,6 +1070,12 @@ function renderCharacters() {
 
     textWrap.appendChild(name);
     textWrap.appendChild(role);
+    if (character.is_location_contact) {
+      const badge = document.createElement("span");
+      badge.className = "character-badge";
+      badge.textContent = t("contactBadge");
+      textWrap.appendChild(badge);
+    }
     card.appendChild(textWrap);
     card.addEventListener("click", () => {
       appState.activeCharacterId = character.id;
@@ -797,6 +1090,13 @@ function renderCharacters() {
 
     characterListEl.appendChild(card);
   });
+
+  if (visibleCharacters.length === 0) {
+    const empty = document.createElement("div");
+    empty.className = "character-role";
+    empty.textContent = t("locationContactsEmpty");
+    characterListEl.appendChild(empty);
+  }
 
   if (watsonCard) {
     watsonCard.classList.toggle("active", appState.chatMode === "watson");
@@ -825,7 +1125,75 @@ function renderPublicState() {
     tensionsListEl.appendChild(li);
   });
 
+  renderLocationPanel();
   renderSkillsUI();
+}
+
+function renderLocationPanel() {
+  if (!appState.publicState) return;
+  const locations = Array.isArray(appState.publicState.case_locations)
+    ? appState.publicState.case_locations
+    : [];
+  const currentId = appState.publicState.current_location_id || "";
+  const currentLocation = getLocationById(currentId);
+  if (currentLocationValueEl) {
+    currentLocationValueEl.textContent =
+      currentLocation?.name
+      || appState.publicState.current_location_name
+      || appState.publicState.case_location
+      || "-";
+  }
+
+  if (locationSelectEl) {
+    locationSelectEl.innerHTML = "";
+    locations.forEach((location) => {
+      const option = document.createElement("option");
+      option.value = location.id;
+      const descriptor = location.descriptor ? ` - ${location.descriptor}` : "";
+      option.textContent = `${location.name}${descriptor}`;
+      locationSelectEl.appendChild(option);
+    });
+    if (currentId) {
+      locationSelectEl.value = currentId;
+    }
+  }
+
+  if (visitedLocationsListEl) {
+    visitedLocationsListEl.innerHTML = "";
+    const visitedIds = Array.isArray(appState.publicState.visited_location_ids)
+      ? appState.publicState.visited_location_ids
+      : [];
+    const visitedNames = visitedIds
+      .map((locationId) => getLocationById(locationId)?.name || locationId)
+      .filter(Boolean);
+    if (!visitedNames.length) {
+      const li = document.createElement("li");
+      li.textContent = "-";
+      visitedLocationsListEl.appendChild(li);
+    } else {
+      visitedNames.forEach((name) => {
+        const li = document.createElement("li");
+        li.textContent = name;
+        visitedLocationsListEl.appendChild(li);
+      });
+    }
+  }
+
+  if (locationContactsListEl) {
+    locationContactsListEl.innerHTML = "";
+    const contacts = getOnSiteContacts();
+    if (!contacts.length) {
+      const li = document.createElement("li");
+      li.textContent = t("locationContactsEmpty");
+      locationContactsListEl.appendChild(li);
+    } else {
+      contacts.forEach((contact) => {
+        const li = document.createElement("li");
+        li.textContent = `${contact.name} - ${contact.role}`;
+        locationContactsListEl.appendChild(li);
+      });
+    }
+  }
 }
 
 function setSkillsFeatureEnabled(enabled) {
@@ -837,18 +1205,10 @@ function setSkillsFeatureEnabled(enabled) {
   if (skillsDrawer) {
     skillsDrawer.hidden = !appState.skillsEnabled;
   }
-  if (watsonCard) {
-    watsonCard.hidden = !appState.skillsEnabled;
-  }
   if (!appState.skillsEnabled) {
     closeSkillsDrawer();
-    if (chatTabWatson) chatTabWatson.hidden = true;
-    if (appState.chatMode === "watson") {
-      setChatMode("case");
-    }
   } else if (!appState.skillsDrawerOpen) {
     closeSkillsDrawer({ persist: false });
-    if (chatTabWatson) chatTabWatson.hidden = false;
     const board = buildBoardState();
     const focusSkill = selectWatsonSkill(board.metrics);
     openSkillsDrawer({ focusSkillId: focusSkill?.id });
@@ -1323,6 +1683,12 @@ function applyTranslations() {
     lang,
     appState.chatMode === "watson" ? "watsonPlaceholder" : "placeholder"
   );
+  renderLocationPanel();
+  if (briefingModalEl && !briefingModalEl.hidden) {
+    renderBriefingFolderView();
+    renderBriefingWatsonView();
+    setBriefingMode(appState.briefingMode);
+  }
   renderSkillsUI();
 }
 
@@ -1382,6 +1748,9 @@ function renderSolutionResult(result) {
 }
 
 async function loadState(sessionId) {
+  const requestId = stateLoadRequestId + 1;
+  stateLoadRequestId = requestId;
+  const requestContext = createCaseRequestContext();
   const res = await fetch("/api/state", {
     method: "POST",
     headers: {
@@ -1395,12 +1764,29 @@ async function loadState(sessionId) {
     })
   });
   const data = await res.json();
+  if (requestId !== stateLoadRequestId) return;
+  if (shouldIgnoreCaseResponse(requestContext, data)) return;
   applyState(data, { rehydrateChat: true });
 }
 
+function ensureActiveCharacterSelection() {
+  const visible = getVisibleCharacters();
+  const visibleIds = new Set(visible.map((character) => character.id));
+  if (appState.activeCharacterId && visibleIds.has(appState.activeCharacterId)) return;
+  const storedId = getStoredActiveCharacter(appState.caseId);
+  const nextId = storedId && visibleIds.has(storedId) ? storedId : visible[0]?.id || null;
+  appState.activeCharacterId = nextId;
+  if (appState.caseId && nextId) {
+    storeActiveCharacter(appState.caseId, nextId);
+  }
+}
+
 function applyState(data, { clearChat = false, rehydrateChat = false } = {}) {
+  if (!data || typeof data !== "object") return;
+  const incomingCaseId = getResponseCaseId(data);
+  if (incomingCaseId && appState.caseId && incomingCaseId !== appState.caseId) return;
   appState.sessionId = data.sessionId;
-  appState.caseId = data.case_id || appState.caseId;
+  appState.caseId = incomingCaseId || appState.caseId;
   appState.caseList = Array.isArray(data.case_list) ? data.case_list : appState.caseList;
   appState.clientState = data.client_state || appState.clientState;
   storeClientState(appState.clientState);
@@ -1416,6 +1802,7 @@ function applyState(data, { clearChat = false, rehydrateChat = false } = {}) {
   if (appState.caseId && desiredId) {
     storeActiveCharacter(appState.caseId, desiredId);
   }
+  ensureActiveCharacterSelection();
   if (clearChat) {
     chatLogEl.innerHTML = "";
   }
@@ -1429,6 +1816,7 @@ function applyState(data, { clearChat = false, rehydrateChat = false } = {}) {
     renderChatLog();
   }
   renderCaseSelect();
+  maybeAutoOpenBriefing();
 }
 
 function renderCaseSelect() {
@@ -1446,55 +1834,105 @@ function renderCaseSelect() {
   }
 }
 
+async function sendWatsonMessage(message, { autoSwitch = false } = {}) {
+  const text = String(message || "").trim();
+  if (!text) return;
+  if (autoSwitch) {
+    setChatMode("watson");
+  }
+  appendWatsonMessage(text, "watson-user");
+  const board = buildBoardState();
+  const context = buildSkillsContext(board);
+  const requestContext = createCaseRequestContext();
+  try {
+    const history = appState.watsonLog.slice(0, -1).slice(-12);
+    const res = await fetch("/api/watson", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        sessionId: appState.sessionId,
+        caseId: appState.caseId,
+        language: appState.language,
+        message: text,
+        watson_settings: {
+          frequency: appState.watsonFrequency,
+          style: appState.watsonStyle,
+          quality: appState.watsonQuality
+        },
+        watson_history: history,
+        board_state: {
+          anchors: board.anchors.slice(0, 8),
+          timeline_gaps: board.timelineGaps.slice(0, 4),
+          evidence: board.evidence.slice(0, 8),
+          contradictions: board.contradictions.slice(0, 6),
+          relationships: board.relationships.slice(0, 6),
+          metrics: board.metrics
+        },
+        watson_tools: buildWatsonTools(context),
+        client_state: appState.clientState
+      })
+    });
+    const data = await res.json();
+    if (shouldIgnoreCaseResponse(requestContext, data)) return;
+    if (!res.ok) {
+      appendWatsonMessage(data.error || t("watsonChatError"), "watson");
+      return;
+    }
+    appendWatsonMessage(data.dialogue || t("watsonChatNoSuggestion"), "watson");
+  } catch (error) {
+    appendWatsonMessage(t("watsonChatError"), "watson");
+  }
+}
+
+async function sendLocationAction(actionType, locationId = "") {
+  if (!appState.caseId) return;
+  const requestContext = createCaseRequestContext();
+  const res = await fetch("/api/action", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      sessionId: appState.sessionId,
+      language: appState.language,
+      caseId: appState.caseId,
+      actionType,
+      locationId,
+      client_state: appState.clientState
+    })
+  });
+  const data = await res.json();
+  if (shouldIgnoreCaseResponse(requestContext, data)) return;
+  if (!res.ok) {
+    appendMessage(data.error || I18N.t(appState.language, "errorGeneric"), "system");
+    return;
+  }
+  appState.publicState = data.public_state;
+  if (data.client_state) {
+    appState.clientState = data.client_state;
+    storeClientState(appState.clientState);
+  }
+  ensureActiveCharacterSelection();
+  renderCharacters();
+  renderPublicState();
+  renderCaseIntro();
+  if (appState.chatMode === "case") {
+    renderCaseChatLog();
+  }
+  if (data.model_used) {
+    modelUsedValue.textContent = data.model_used;
+  }
+}
 
 chatForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const message = messageInput.value.trim();
   if (!message) return;
   if (appState.chatMode === "watson") {
-    appendWatsonMessage(message, "watson-user");
     messageInput.value = "";
-    const board = buildBoardState();
-    const context = buildSkillsContext(board);
-    try {
-      const history = appState.watsonLog.slice(0, -1).slice(-12);
-      const res = await fetch("/api/watson", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify({
-          sessionId: appState.sessionId,
-          caseId: appState.caseId,
-          language: appState.language,
-          message,
-          watson_settings: {
-            frequency: appState.watsonFrequency,
-            style: appState.watsonStyle,
-            quality: appState.watsonQuality
-          },
-          watson_history: history,
-          board_state: {
-            anchors: board.anchors.slice(0, 8),
-            timeline_gaps: board.timelineGaps.slice(0, 4),
-            evidence: board.evidence.slice(0, 8),
-            contradictions: board.contradictions.slice(0, 6),
-            relationships: board.relationships.slice(0, 6),
-            metrics: board.metrics
-          },
-          watson_tools: buildWatsonTools(context),
-          client_state: appState.clientState
-        })
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        appendWatsonMessage(data.error || t("watsonChatError"), "watson");
-        return;
-      }
-      appendWatsonMessage(data.dialogue || t("watsonChatNoSuggestion"), "watson");
-    } catch (error) {
-      appendWatsonMessage(t("watsonChatError"), "watson");
-    }
+    await sendWatsonMessage(message);
     return;
   }
   if (!appState.activeCharacterId) {
@@ -1504,6 +1942,7 @@ chatForm.addEventListener("submit", async (event) => {
 
   appendMessage(message, "detective");
   messageInput.value = "";
+  const requestContext = createCaseRequestContext();
 
   const res = await fetch("/api/turn", {
     method: "POST",
@@ -1522,12 +1961,14 @@ chatForm.addEventListener("submit", async (event) => {
   });
 
   const data = await res.json();
+  if (shouldIgnoreCaseResponse(requestContext, data)) return;
   if (!res.ok) {
     appendMessage(data.error || I18N.t(appState.language, "errorGeneric"), "character");
     return;
   }
 
   appendMessage(data.dialogue, "character");
+  updateDebugOverlay(data);
   appState.publicState = data.public_state;
   if (data.client_state) {
     appState.clientState = data.client_state;
@@ -1543,6 +1984,8 @@ chatForm.addEventListener("submit", async (event) => {
 });
 
 resetBtn.addEventListener("click", async () => {
+  invalidateCaseRequests();
+  const requestContext = createCaseRequestContext();
   const res = await fetch("/api/reset", {
     method: "POST",
     headers: {
@@ -1552,11 +1995,17 @@ resetBtn.addEventListener("click", async () => {
       sessionId: appState.sessionId,
       language: appState.language,
       caseId: appState.caseId,
-      client_state: appState.clientState
+      client_state: null
     })
   });
   const data = await res.json();
+  if (shouldIgnoreCaseResponse(requestContext, data)) return;
+  if (!res.ok) {
+    appendMessage(data.error || I18N.t(appState.language, "errorGeneric"), "system");
+    return;
+  }
   clearStoredClientState();
+  appState.clientState = null;
   applyState(data, { clearChat: true });
   appendMessage(I18N.t(appState.language, "caseReset"), "detective");
   modelUsedValue.textContent = "-";
@@ -1576,7 +2025,7 @@ appState.language = I18N.normalizeLanguage(storedLang || browserLang);
 appState.modelMode = storedModelMode || "auto";
 appState.skillsEnabled = localStorage.getItem("skillsEnabled") === "true";
 appState.skillsDrawerOpen = localStorage.getItem("skillsDrawerOpen") === "true";
-appState.watsonFrequency = localStorage.getItem("watsonFrequency") || "off";
+appState.watsonFrequency = localStorage.getItem("watsonFrequency") || "normal";
 appState.watsonStyle = localStorage.getItem("watsonStyle") || "questions";
 appState.watsonQuality = Number(localStorage.getItem("watsonQuality")) || 70;
 appState.watsonLog = loadWatsonLog();
@@ -1592,6 +2041,7 @@ if (appState.skillsEnabled && appState.skillsDrawerOpen) {
   openSkillsDrawer();
 }
 setChatMode(appState.chatMode);
+ensureDebugOverlay();
 appState.clientState = loadStoredClientState();
 if (appState.clientState?.case_id) {
   appState.caseId = appState.clientState.case_id;
@@ -1609,7 +2059,11 @@ languageSelect.addEventListener("change", () => {
 caseSelect.addEventListener("change", async () => {
   const nextCaseId = caseSelect.value;
   if (!nextCaseId || nextCaseId === appState.caseId) return;
+  const previousCaseId = appState.caseId;
+  invalidateCaseRequests();
   appState.caseId = nextCaseId;
+  closeBriefingModal();
+  const requestContext = createCaseRequestContext();
   const res = await fetch("/api/reset", {
     method: "POST",
     headers: {
@@ -1619,11 +2073,19 @@ caseSelect.addEventListener("change", async () => {
       sessionId: appState.sessionId,
       language: appState.language,
       caseId: nextCaseId,
-      client_state: appState.clientState
+      client_state: null
     })
   });
   const data = await res.json();
+  if (shouldIgnoreCaseResponse(requestContext, data)) return;
+  if (!res.ok) {
+    appState.caseId = previousCaseId;
+    renderCaseSelect();
+    appendMessage(data.error || I18N.t(appState.language, "errorGeneric"), "system");
+    return;
+  }
   clearStoredClientState();
+  appState.clientState = null;
   applyState(data, { clearChat: true });
   appendMessage(
     I18N.t(appState.language, "caseSwitched", { title: appState.publicState?.case_title || nextCaseId }),
@@ -1641,6 +2103,7 @@ caseSelect.addEventListener("change", async () => {
 
 checkSolutionBtn.addEventListener("click", async () => {
   if (!appState.caseId) return;
+  const requestContext = createCaseRequestContext();
   const solution = {
     killer: solutionKillerInput.value.trim(),
     method: solutionMethodInput.value.trim(),
@@ -1675,6 +2138,7 @@ checkSolutionBtn.addEventListener("click", async () => {
   });
 
   const data = await res.json();
+  if (shouldIgnoreCaseResponse(requestContext, data)) return;
   if (!res.ok) {
     solutionResultEl.textContent = data.error || I18N.t(appState.language, "errorGeneric");
     return;
@@ -1752,17 +2216,83 @@ if (chatTabCase) {
 
 if (chatTabWatson) {
   chatTabWatson.addEventListener("click", () => {
-    if (!appState.skillsEnabled) return;
     setChatMode("watson");
   });
 }
 
 if (watsonCard) {
   watsonCard.addEventListener("click", () => {
-    if (!appState.skillsEnabled) return;
     setChatMode("watson");
   });
 }
+
+if (watsonHintBtn) {
+  watsonHintBtn.addEventListener("click", async () => {
+    const prompt = appState.language === "el"
+      ? "Έχω κολλήσει. Δώσε μου μια σύντομη υπόδειξη."
+      : "I'm stuck. Give me one short hint.";
+    await sendWatsonMessage(prompt, { autoSwitch: true });
+  });
+}
+
+if (moveLocationBtn) {
+  moveLocationBtn.addEventListener("click", async () => {
+    const targetId = locationSelectEl?.value || appState.publicState?.current_location_id || "";
+    await sendLocationAction("move", targetId);
+  });
+}
+
+if (inspectLocationBtn) {
+  inspectLocationBtn.addEventListener("click", async () => {
+    const currentId = appState.publicState?.current_location_id || locationSelectEl?.value || "";
+    await sendLocationAction("inspect", currentId);
+  });
+}
+
+if (openBriefingBtn) {
+  openBriefingBtn.addEventListener("click", () => {
+    openBriefingModal("folder");
+  });
+}
+
+if (openNarrationBtn) {
+  openNarrationBtn.addEventListener("click", () => {
+    openBriefingModal("watson");
+  });
+}
+
+if (briefingCloseBtn) {
+  briefingCloseBtn.addEventListener("click", () => {
+    closeBriefingModal();
+  });
+}
+
+if (briefingFolderTab) {
+  briefingFolderTab.addEventListener("click", () => {
+    setBriefingMode("folder");
+  });
+}
+
+if (briefingWatsonTab) {
+  briefingWatsonTab.addEventListener("click", () => {
+    setBriefingMode("watson");
+  });
+}
+
+if (briefingModalEl) {
+  briefingModalEl.addEventListener("click", (event) => {
+    if (event.target.closest("[data-briefing-close]")) {
+      closeBriefingModal();
+    }
+  });
+}
+
+document.addEventListener("keydown", (event) => {
+  if (event.key !== "Escape") return;
+  if (!briefingModalEl || briefingModalEl.hidden) return;
+  event.preventDefault();
+  closeBriefingModal();
+});
 
 if (watsonChipBtn) {
   watsonChipBtn.addEventListener("click", () => {

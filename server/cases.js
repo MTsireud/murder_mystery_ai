@@ -1,3 +1,7 @@
+/**
+ * Defines the static case library and turns a selected case entry into a normalized runtime state.
+ * This module is the canonical source for case narrative data, characters, and truth anchors.
+ */
 import { getLocalized, normalizeLanguage } from "./i18n.js";
 import { createDefaultMemory, normalizeMemory } from "./memory.js";
 import { enrichStateFromCase } from "./story.js";
@@ -5,6 +9,7 @@ import { createInvestigationState } from "./investigation.js";
 
 const loc = (en, el = en) => ({ en, el });
 
+// Stores the full authored case content used to seed new sessions.
 const CASE_LIBRARY = [
   {
     id: "stage-door-1897",
@@ -3096,20 +3101,24 @@ const CASE_LIBRARY = [
   }
 ];
 
+// Creates a safe clone so session mutations never write back into CASE_LIBRARY.
 function deepClone(value) {
   if (typeof structuredClone === "function") return structuredClone(value);
   return JSON.parse(JSON.stringify(value));
 }
 
+// Returns the first case in the library as the default fallback.
 export function getDefaultCase() {
   return CASE_LIBRARY[0];
 }
 
+// Resolves a case by id and falls back to the default when the id is missing or unknown.
 export function getCaseById(id) {
   if (!id) return getDefaultCase();
   return CASE_LIBRARY.find((entry) => entry.id === id) || getDefaultCase();
 }
 
+// Builds a lightweight, localized list for case-picker UIs.
 export function getCaseList(lang) {
   const language = normalizeLanguage(lang);
   return CASE_LIBRARY.map((entry) => ({
@@ -3121,6 +3130,7 @@ export function getCaseList(lang) {
   }));
 }
 
+// Converts authored case data into a fully initialized runtime state object.
 export function createStateFromCase(caseData) {
   const data = deepClone(caseData);
   const characters = (data.characters || []).map((character) => ({

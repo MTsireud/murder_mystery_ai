@@ -59,6 +59,7 @@ function buildRelationshipLines(state, language) {
   const characters = Array.isArray(state.characters) ? state.characters : [];
   const lines = [];
   characters.forEach((character) => {
+    if (character?.is_location_contact) return;
     const name = character.name;
     const role = getLocalized(character.role, language);
     const summary = formatLine(character.relationship_summary, "", language);
@@ -72,6 +73,20 @@ function buildRelationshipLines(state, language) {
   return lines.slice(0, 5);
 }
 
+function buildLocationLines(state, language) {
+  const locations = Array.isArray(state?.public_state?.case_locations)
+    ? state.public_state.case_locations
+    : [];
+  return locations
+    .slice(0, 5)
+    .map((entry) => {
+      const name = getLocalized(entry?.name, language);
+      const descriptor = getLocalized(entry?.descriptor, language);
+      return [name, descriptor].filter(Boolean).join(" — ");
+    })
+    .filter(Boolean);
+}
+
 function buildSocialLines(state, language) {
   const note = formatLine(state.public_state?.social_notes, "", language);
   if (!note) return [];
@@ -83,7 +98,8 @@ function sectionTitle(key, language) {
     crime: loc("Crime at a glance", "Το έγκλημα με μια ματιά"),
     reason: loc("Why you are called here", "Γιατί σας κάλεσαν"),
     relationships: loc("Key relationships", "Βασικές σχέσεις"),
-    social: loc("Social context", "Κοινωνικό υπόβαθρο")
+    social: loc("Social context", "Κοινωνικό υπόβαθρο"),
+    locations: loc("Locations to canvass", "Τοποθεσίες για έρευνα")
   };
   return titles[key][language === "el" ? "el" : "en"];
 }
@@ -94,6 +110,7 @@ function buildSections(state, language) {
   const reasonLines = buildReasonLines(state, language);
   const relationLines = buildRelationshipLines(state, language);
   const socialLines = buildSocialLines(state, language);
+  const locationLines = buildLocationLines(state, language);
   if (crimeLines.length) {
     sections.push({ title: sectionTitle("crime", language), lines: crimeLines });
   }
@@ -105,6 +122,9 @@ function buildSections(state, language) {
   }
   if (socialLines.length) {
     sections.push({ title: sectionTitle("social", language), lines: socialLines });
+  }
+  if (locationLines.length) {
+    sections.push({ title: sectionTitle("locations", language), lines: locationLines });
   }
   return sections;
 }

@@ -233,6 +233,16 @@ function buildCharacterPrompt({
       .filter((loc) => loc && loc.id && loc.name)
       .map((loc) => [loc.id, formatValue(loc.name, language)])
   );
+  const currentLocationName = publicState?.current_location_id
+    ? locationById.get(publicState.current_location_id) || publicState.current_location_id
+    : "";
+  const characterLocationNames = (Array.isArray(character?.presence?.location_ids)
+    ? character.presence.location_ids
+    : []
+  )
+    .map((locationId) => locationById.get(locationId) || locationId)
+    .filter(Boolean)
+    .join(", ");
 
   const victimDossier = publicState?.victim_dossier || {};
   const victimBio = formatValue(victimDossier.bio, language);
@@ -392,6 +402,10 @@ function buildCharacterPrompt({
     victimRel || "-",
     "Canonical locations (use these exact labels):",
     locationNameList || "-",
+    "Current investigation location:",
+    currentLocationName || "-",
+    "Where you can be found:",
+    characterLocationNames || "not location-bound",
     "Police call time (do not contradict):",
     policeCallTime || "-"
   ].join("\n");
@@ -581,9 +595,10 @@ async function generateCharacterResponseMock({ character, message, language, all
 
   if (intent === "accuse") {
     const suspicionId = character.private_facts.suspicion_id;
+    const activeCast = (allCharacters || []).filter((entry) => !entry?.is_location_contact);
     const target =
-      allCharacters.find((c) => c.id === suspicionId) ||
-      allCharacters.find((c) => c.id !== character.id);
+      activeCast.find((c) => c.id === suspicionId) ||
+      activeCast.find((c) => c.id !== character.id);
     const targetName = target?.name || t(lang, "no_one_specific");
     response.dialogue = t(lang, "accusation_line", { name: targetName });
     response.claims.push({
@@ -766,13 +781,36 @@ function normalizeWatsonSettings(settings = {}) {
   };
 }
 
+function detectWatsonStuckSignal(message) {
+  const lower = String(message || "").toLowerCase();
+  const markers = [
+    "stuck",
+    "hint",
+    "help",
+    "i'm lost",
+    "im lost",
+    "what now",
+    "next step",
+    "δεν ξερω",
+    "δεν ξέρω",
+    "βοηθεια",
+    "βοήθεια",
+    "υπόδειξη",
+    "υποδειξη",
+    "κολλησα",
+    "κόλλησα"
+  ];
+  return markers.some((marker) => lower.includes(marker));
+}
+
 function buildWatsonPrompt({
   language,
   publicState,
   allCharacters,
   boardState,
   tools,
-  settings
+  settings,
+  stuckSignal
 }) {
   const lang = normalizeLanguage(language);
   const languageName = lang === "el" ? "Greek" : "English";
@@ -813,6 +851,35 @@ function buildWatsonPrompt({
         .map((item) => `${item.from} <-> ${item.to} (${item.type || "link"})`)
         .join(" | ")
     : "-";
+  const caseLocations = Array.isArray(publicState?.case_locations)
+    ? publicState.case_locations
+    : [];
+  const locationNameById = new Map(
+    caseLocations
+      .filter((entry) => entry?.id)
+      .map((entry) => [entry.id, getLocalized(entry.name, lang) || entry.id])
+  );
+  const currentLocationId = String(publicState?.current_location_id || "").trim();
+  const currentLocationName = currentLocationId
+    ? locationNameById.get(currentLocationId) || currentLocationId
+    : getLocalized(publicState?.case_location, lang) || "-";
+  const visitedLocations = (Array.isArray(publicState?.visited_location_ids)
+    ? publicState.visited_location_ids
+    : []
+  )
+    .map((locationId) => locationNameById.get(locationId) || locationId)
+    .filter(Boolean)
+    .slice(0, 6)
+    .join(", ");
+  const onSiteContacts = (allCharacters || [])
+    .filter((character) => {
+      const ids = Array.isArray(character?.presence?.location_ids)
+        ? character.presence.location_ids
+        : [];
+      return Boolean(character?.is_location_contact) && ids.includes(currentLocationId);
+    })
+    .map((character) => `${character.name} (${getLocalized(character.role, lang)})`)
+    .join(", ");
 
   const knownCharacters = (allCharacters || [])
     .map((character) => `${character.name} (${getLocalized(character.role, lang)})`)
@@ -838,13 +905,18 @@ function buildWatsonPrompt({
   let styleGuidance = "Ask 1 short question at the end.";
   if (settings.style === "hypothesis") {
     styleGuidance =
-      "Offer 1 hypothesis plus 1 test. End with a question that checks the test.";
+      "Offer 1 hypothesis plus 1 test. Include one explicit 'Next:' action.";
   }
+  const stuckGuidance = stuckSignal
+    ? "The user is stuck. Give exactly one gentle riddle-like clue (<= 10 words), then one direct hint tied to a location/object, then one 'Next:' action."
+    : "Use one short riddle-like clue only when it adds value, then stay direct.";
 
   return [
     "You are Watson, an investigative advisor.",
     `Respond in ${languageName}.`,
-    "Be helpful, patient, joyful, giddy, and a little goofy. Stay respectful.",
+    "Be helpful, patient, and a little playful.",
+    "Voice rule: one light riddle-like sentence max, then clear plain guidance.",
+    "Do not become cryptic. Keep hints understandable in gameplay.",
     "Never claim to know the real solution. Use only the case snapshot and conversation.",
     "Do not reveal hidden truth or private facts. Treat all claims as uncertain.",
     "If the user rejects an idea, acknowledge it and do not repeat that idea.",
@@ -853,12 +925,16 @@ function buildWatsonPrompt({
     `${qualityLine}`,
     `${toolGuidance}`,
     `${styleGuidance}`,
-    "Keep replies concise (2-5 sentences).",
+    `${stuckGuidance}`,
+    "Keep replies concise (2-4 sentences).",
     "",
     "Case snapshot:",
     `- Title: ${getLocalized(publicState?.case_title, lang) || "-"}`,
     `- Time: ${getLocalized(publicState?.case_time, lang) || "-"}`,
     `- Location: ${getLocalized(publicState?.case_location, lang) || "-"}`,
+    `- Current location: ${currentLocationName || "-"}`,
+    `- Visited locations: ${visitedLocations || "-"}`,
+    `- On-site contacts: ${onSiteContacts || "-"}`,
     `- Victim: ${getLocalized(publicState?.victim_name, lang) || "-"}`,
     `- Briefing: ${getLocalized(publicState?.case_briefing, lang) || "-"}`,
     `- Evidence: ${evidenceLines}`,
@@ -871,7 +947,8 @@ function buildWatsonPrompt({
     "Available tools:",
     toolLines,
     "",
-    "When you recommend a tool, name it exactly and give one concrete prompt."
+    "When you recommend a tool, name it exactly and give one concrete prompt.",
+    "When possible, include an explicit line starting with 'Next:'."
   ].join("\n");
 }
 
@@ -902,14 +979,23 @@ export async function generateWatsonResponse({
   const lang = normalizeLanguage(language);
   const client = getOpenAIClient();
   const normalizedSettings = normalizeWatsonSettings(settings);
+  const stuckSignal = detectWatsonStuckSignal(message);
+  const currentLocationName = getLocalized(publicState?.current_location_name, lang)
+    || getLocalized(publicState?.case_location, lang)
+    || "the scene";
 
   const temperature =
     normalizedSettings.quality < 35 ? 0.9 : normalizedSettings.quality < 70 ? 0.65 : 0.45;
 
   if (!client || USE_MOCK) {
+    const stuckFallback = lang === "el"
+      ? `Κοίτα τη σκιά, όχι το θόρυβο. Ίχνος: κάτι δεν δένει στο ${currentLocationName}. Next: πήγαινε εκεί και ρώτα τον διαθέσιμο μάρτυρα τι παρατήρησε πρώτο.`
+      : `Watch the shadow, not the noise. Hint: something at ${currentLocationName} feels off. Next: move there and ask the on-site contact what they noticed first.`;
     const fallback = {
       dialogue:
-        normalizedSettings.style === "hypothesis"
+        stuckSignal
+          ? stuckFallback
+          : normalizedSettings.style === "hypothesis"
           ? "Hypothesis: the timeline has a gap. Test: lock who can place each person. Which gap should we probe?"
           : "We should lock a clean timeline first. Want me to suggest the next question?"
     };
@@ -928,7 +1014,8 @@ export async function generateWatsonResponse({
     allCharacters,
     boardState,
     tools,
-    settings: normalizedSettings
+    settings: normalizedSettings,
+    stuckSignal
   });
   try {
     const responseParams = {
@@ -952,7 +1039,10 @@ export async function generateWatsonResponse({
     const dialogue = outputText ? outputText.trim() : "";
     if (!dialogue) {
       return {
-        dialogue: "I need a moment to think. Want a quick timeline check next?",
+        dialogue:
+          lang === "el"
+            ? `Κάτι λείπει στο μοτίβο. Hint: τσέκαρε ξανά το ${currentLocationName}. Next: κλείδωσε ποιος ήταν εκεί στο κρίσιμο λεπτό.`
+            : `There is a gap in the pattern. Hint: re-check ${currentLocationName}. Next: lock who was there at the key minute.`,
         _meta: {
           model_used: ROUTINE_MODEL,
           model_selected: ROUTINE_MODEL,
@@ -974,9 +1064,9 @@ export async function generateWatsonResponse({
   } catch (error) {
     return {
       dialogue:
-        normalizedSettings.style === "hypothesis"
-          ? "My brain fizzled for a second. Want me to try a timeline test instead?"
-          : "I'm having trouble reaching my notes. Want a quick next question instead?",
+        lang === "el"
+          ? `Το νήμα είναι λεπτό, όχι χαμένο. Hint: κάτι στον χώρο δεν κολλάει. Next: ζήτα ένα συγκεκριμένο σημείο χρόνου από τον επόμενο μάρτυρα.`
+          : `The thread is thin, not gone. Hint: something in the location is off. Next: ask your next witness for one precise time anchor.`,
       _meta: {
         model_used: "fallback",
         model_selected: ROUTINE_MODEL,

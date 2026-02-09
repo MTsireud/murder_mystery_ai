@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Interrogation Sim MVP</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -14,7 +15,17 @@
           <h1 data-i18n="caseTitle">Backstage Silence</h1>
           <p class="subtitle" data-i18n="caseSubtitle">Shared-world interrogation simulator</p>
           <p id="caseHeadline" class="headline"></p>
+          <div class="hero-actions">
+            <button id="openBriefingBtn" class="ghost-inline" type="button" data-i18n="openCaseFolder">
+              Open Case Folder
+            </button>
+            <button id="openNarrationBtn" class="ghost-inline" type="button" data-i18n="openWatsonIntro">
+              Watson Intro
+            </button>
+          </div>
+          <div id="caseIntro" class="case-intro"></div>
         </div>
+
         <div class="status hero-status">
           <div class="status-card">
             <span class="label" data-i18n="timeElapsed">Time Elapsed</span>
@@ -52,42 +63,39 @@
             </label>
           </div>
         </div>
-        <div id="caseIntro" class="case-intro"></div>
       </header>
 
       <main class="grid">
+        <section class="panel chat">
+          <div class="chat-tabs">
+            <button id="chatTabCase" class="chat-tab active" type="button" data-i18n="chatTabCase">
+              Interrogation
+            </button>
+            <button id="chatTabWatson" class="chat-tab" type="button" data-i18n="chatTabWatson">
+              Watson
+            </button>
+            <button id="watsonHintBtn" class="chat-tab chat-tab-hint" type="button" data-i18n="watsonNeedHint">
+              Need Hint
+            </button>
+          </div>
+          <div id="chatLog" class="chat-log"></div>
+          <form id="chatForm" class="composer">
+            <input id="messageInput" type="text" placeholder="" autocomplete="off" />
+            <button type="submit" data-i18n="send">Send</button>
+          </form>
+        </section>
+
         <section class="panel characters">
           <h2 data-i18n="characters">Characters</h2>
           <div id="characterList" class="character-list"></div>
           <div class="character-divider" data-i18n="caseAdvisors">Advisors</div>
-          <button id="watsonCard" class="character-card watson" type="button" hidden>
+          <button id="watsonCard" class="character-card watson" type="button">
             <div class="character-meta">
               <div class="character-name" data-i18n="watsonName">Watson</div>
               <div class="character-role" data-i18n="watsonRole">Analyst</div>
             </div>
           </button>
           <button id="resetBtn" class="ghost" data-i18n="resetCase">Reset Case</button>
-        </section>
-
-        <section class="panel chat">
-          <div class="chat-tabs">
-            <button id="chatTabCase" class="chat-tab active" type="button" data-i18n="chatTabCase">
-              Interrogation
-            </button>
-            <button id="chatTabWatson" class="chat-tab" type="button" data-i18n="chatTabWatson" hidden>
-              Watson
-            </button>
-          </div>
-          <div id="chatLog" class="chat-log"></div>
-          <form id="chatForm" class="composer">
-            <input
-              id="messageInput"
-              type="text"
-              placeholder=""
-              autocomplete="off"
-            />
-            <button type="submit" data-i18n="send">Send</button>
-          </form>
         </section>
 
         <section class="panel intel">
@@ -99,6 +107,49 @@
           <div class="intel-block">
             <h3 data-i18n="tensions">Tensions</h3>
             <ul id="tensionsList" class="list"></ul>
+          </div>
+        </section>
+
+        <section class="panel scene-lab">
+          <div class="panel-head">
+            <h2 data-i18n="sceneLabTitle">Location Control</h2>
+            <span class="scene-pill" data-i18n="sceneLabQueued">Travel + inspect</span>
+          </div>
+          <p class="scene-hint" data-i18n="sceneLabHint">
+            Move between locations, inspect the scene, and unlock local contacts.
+          </p>
+          <div class="location-nav">
+            <div class="location-current">
+              <span data-i18n="currentLocationLabel">Current location</span>
+              <strong id="currentLocationValue">-</strong>
+            </div>
+            <label class="location-select-wrap">
+              <span data-i18n="moveToLabel">Move to</span>
+              <select id="locationSelect" class="language-select"></select>
+            </label>
+            <div class="location-actions">
+              <button id="moveLocationBtn" type="button" data-i18n="moveAction">Move</button>
+              <button id="inspectLocationBtn" class="ghost-inline" type="button" data-i18n="inspectAction">
+                Inspect
+              </button>
+            </div>
+          </div>
+          <div class="scene-stage" aria-hidden="true">
+            <div class="scene-grid"></div>
+            <div class="scene-marker marker-a">
+              <span data-i18n="sceneLabMarkerA">Camera cone</span>
+            </div>
+            <div class="scene-marker marker-b">
+              <span data-i18n="sceneLabMarkerB">Vehicle lane</span>
+            </div>
+          </div>
+          <div class="location-visited">
+            <span data-i18n="visitedLocationsLabel">Visited locations</span>
+            <ul id="visitedLocationsList" class="chip-list"></ul>
+          </div>
+          <div class="location-contacts">
+            <h3 data-i18n="locationContactsTitle">On-site contacts</h3>
+            <ul id="locationContactsList" class="scene-checklist compact"></ul>
           </div>
         </section>
 
@@ -283,6 +334,29 @@
         </div>
       </div>
     </aside>
+
+    <div id="briefingModal" class="briefing-modal" hidden>
+      <div class="briefing-backdrop" data-briefing-close></div>
+      <section class="briefing-panel" role="dialog" aria-modal="true" aria-labelledby="briefingTitle">
+        <header class="briefing-header">
+          <div>
+            <p class="eyebrow" data-i18n="caseFile">Case File</p>
+            <h2 id="briefingTitle" data-i18n="briefingTitle">Case Folder Intro</h2>
+          </div>
+          <button id="briefingCloseBtn" class="drawer-close" type="button" data-i18n="close">Close</button>
+        </header>
+        <div class="briefing-tabs">
+          <button id="briefingFolderTab" class="chat-tab active" type="button" data-i18n="briefingFolderTab">
+            Case Folder
+          </button>
+          <button id="briefingWatsonTab" class="chat-tab" type="button" data-i18n="briefingWatsonTab">
+            Watson Narration
+          </button>
+        </div>
+        <div id="briefingFolderView" class="briefing-view"></div>
+        <div id="briefingWatsonView" class="briefing-view" hidden></div>
+      </section>
+    </div>
 
     <script src="i18n.js"></script>
     <script src="app.js"></script>

@@ -133,11 +133,13 @@ function buildCheckerContext({ state, language, solution, revealRequested }) {
       tensions: state.public_state.tensions,
       discovered_evidence: state.public_state.discovered_evidence
     },
-    characters: state.characters.map((character) => ({
-      id: character.id,
-      name: character.name,
-      role: getLocalized(character.role, lang)
-    })),
+    characters: state.characters
+      .filter((character) => !character?.is_location_contact)
+      .map((character) => ({
+        id: character.id,
+        name: character.name,
+        role: getLocalized(character.role, lang)
+      })),
     solution
   };
 }

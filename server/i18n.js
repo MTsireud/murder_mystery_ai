@@ -69,6 +69,10 @@ export function localizePublicState(publicState, lang) {
   const caseLocations = Array.isArray(publicState.case_locations)
     ? publicState.case_locations
     : [];
+  const currentLocationId = typeof publicState.current_location_id === "string"
+    ? publicState.current_location_id
+    : "";
+  const currentLocationEntry = caseLocations.find((entry) => entry.id === currentLocationId) || null;
   const relationshipHistory = Array.isArray(publicState.relationship_history)
     ? publicState.relationship_history
     : [];
@@ -83,6 +87,8 @@ export function localizePublicState(publicState, lang) {
     case_time: getLocalized(publicState.case_time, lang),
     case_location: getLocalized(publicState.case_location, lang),
     case_briefing: getLocalized(publicState.case_briefing, lang),
+    case_intro_reason: getLocalized(publicState.case_intro_reason, lang),
+    social_notes: getLocalized(publicState.social_notes, lang),
     police_call_time: getLocalized(publicState.police_call_time, lang),
     victim_dossier: publicState.victim_dossier
       ? {
@@ -97,6 +103,17 @@ export function localizePublicState(publicState, lang) {
       descriptor: getLocalized(loc.descriptor, lang),
       hint: getLocalized(loc.hint, lang)
     })),
+    current_location_id: currentLocationId,
+    current_location_name: currentLocationEntry ? getLocalized(currentLocationEntry.name, lang) : "",
+    visited_location_ids: Array.isArray(publicState.visited_location_ids)
+      ? publicState.visited_location_ids.filter(Boolean)
+      : [],
+    location_intel_ids: Array.isArray(publicState.location_intel_ids)
+      ? publicState.location_intel_ids.filter(Boolean)
+      : [],
+    introduced_character_ids: Array.isArray(publicState.introduced_character_ids)
+      ? publicState.introduced_character_ids.filter(Boolean)
+      : [],
     relationship_history: relationshipHistory.map((entry) => ({
       id: entry.id,
       time: getLocalized(entry.time, lang),
@@ -113,6 +130,10 @@ export function localizePublicState(publicState, lang) {
     time_minutes: publicState.time_minutes,
     discovered_evidence: localizeList(publicState.discovered_evidence, lang),
     public_accusations: localizeList(publicState.public_accusations, lang),
-    tensions: localizeList(publicState.tensions, lang)
+    tensions: localizeList(publicState.tensions, lang),
+    public_bulletin: Array.isArray(publicState.public_bulletin)
+      ? publicState.public_bulletin
+      : [],
+    case_state: publicState.case_state || null
   };
 }
