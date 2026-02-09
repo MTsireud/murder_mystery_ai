@@ -3,6 +3,7 @@ import { buildStateFromClient, getOrCreateSession } from "../server/state.js";
 import { ensureCaseBriefing } from "../server/narrator.js";
 import { generateWatsonResponse } from "../server/llm.js";
 import { readJsonBody } from "../server/request.js";
+import { buildWatsonEvidenceContext } from "../server/watson_context.js";
 
 export default async function handler(req, res) {
   if (req.method !== "POST") {
@@ -34,6 +35,7 @@ export default async function handler(req, res) {
   await ensureCaseBriefing({ state });
 
   try {
+    const watsonEvidenceContext = await buildWatsonEvidenceContext({ state, language });
     const result = await generateWatsonResponse({
       message,
       language,
@@ -42,7 +44,8 @@ export default async function handler(req, res) {
       boardState: board_state,
       tools: watson_tools,
       settings: watson_settings,
-      history: watson_history
+      history: watson_history,
+      evidenceContext: watsonEvidenceContext
     });
 
     res.status(200).json({

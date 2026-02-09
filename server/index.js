@@ -17,6 +17,7 @@ import { ensureCaseBriefing } from "./narrator.js";
 import { checkSolution } from "./checker.js";
 import { runMurderMysteryJudge } from "./story_judge.js";
 import { runStoryQualityFeedbackLoop } from "./story_feedback_loop.js";
+import { buildWatsonEvidenceContext } from "./watson_context.js";
 
 const app = express();
 app.use(express.json());
@@ -243,6 +244,7 @@ app.post("/api/watson", async (req, res) => {
   await ensureCaseBriefing({ state });
 
   try {
+    const watsonEvidenceContext = await buildWatsonEvidenceContext({ state, language });
     const result = await generateWatsonResponse({
       message,
       language,
@@ -251,7 +253,8 @@ app.post("/api/watson", async (req, res) => {
       boardState: board_state,
       tools: watson_tools,
       settings: watson_settings,
-      history: watson_history
+      history: watson_history,
+      evidenceContext: watsonEvidenceContext
     });
 
     res.json({

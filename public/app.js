@@ -39,8 +39,12 @@ const sceneFallbackEl = document.getElementById("sceneFallback");
 const sceneHotspotsEl = document.getElementById("sceneHotspots");
 const sceneTransitionOverlayEl = document.getElementById("sceneTransitionOverlay");
 const sceneMetaEl = document.getElementById("sceneMeta");
+const scenePinListEl = document.getElementById("scenePinList");
 const observationListEl = document.getElementById("observationList");
 const observationPromptListEl = document.getElementById("observationPromptList");
+const analyzeToggle = document.getElementById("analyzeToggle");
+const hapticsToggle = document.getElementById("hapticsToggle");
+const soundToggle = document.getElementById("soundToggle");
 const skillsToggle = document.getElementById("skillsToggle");
 const skillsDrawer = document.getElementById("skillsDrawer");
 const skillsDrawerTab = document.getElementById("skillsDrawerTab");
@@ -67,6 +71,15 @@ const briefingFolderTab = document.getElementById("briefingFolderTab");
 const briefingWatsonTab = document.getElementById("briefingWatsonTab");
 const briefingFolderView = document.getElementById("briefingFolderView");
 const briefingWatsonView = document.getElementById("briefingWatsonView");
+const observationSheetEl = document.getElementById("observationSheet");
+const observationSheetCloseBtn = document.getElementById("observationSheetCloseBtn");
+const observationSheetTitleEl = document.getElementById("observationSheetTitle");
+const observationSheetNoteEl = document.getElementById("observationSheetNote");
+const observationSheetMetaEl = document.getElementById("observationSheetMeta");
+const observationSheetObserveBtn = document.getElementById("observationSheetObserveBtn");
+const observationSheetUsePromptBtn = document.getElementById("observationSheetUsePromptBtn");
+const observationSheetJumpBtn = document.getElementById("observationSheetJumpBtn");
+const observationSheetPromptListEl = document.getElementById("observationSheetPromptList");
 const debugOverlayEnabled = window.location.search.includes("debug=1");
 if (debugOverlayEnabled) {
   localStorage.setItem("debugOverlay", "true");
@@ -92,7 +105,13 @@ const appState = {
   watsonFrequency: "off",
   watsonStyle: "questions",
   watsonQuality: 70,
-  briefingMode: "folder"
+  briefingMode: "folder",
+  reducedMotion: false,
+  selectedHotspotId: null,
+  observationSheetHotspotId: null,
+  hapticsEnabled: false,
+  soundEnabled: false,
+  analyzeMode: false
 };
 
 let caseRequestEpoch = 0;
@@ -101,6 +120,9 @@ let sceneTransitionPending = false;
 let sceneTransitionShownAt = 0;
 let sceneTransitionMinVisibleMs = 220;
 let sceneTransitionClearTimer = null;
+let uiAudioContext = null;
+const chatScrollPositions = new Map();
+const reducedMotionQuery = window.matchMedia("(prefers-reduced-motion: reduce)");
 
 function invalidateCaseRequests() {
   caseRequestEpoch += 1;
@@ -174,6 +196,10 @@ function updateDebugOverlay(data) {
     `dialogue_len: ${data?.dialogue ? data.dialogue.length : 0}`
   ];
   debugOverlayEl.textContent = lines.join("\n");
+}
+
+function syncReducedMotionPreference() {
+  appState.reducedMotion = Boolean(reducedMotionQuery.matches);
 }
 
 const CLIENT_STATE_KEY = "clientState";
@@ -505,6 +531,83 @@ function t(key, vars) {
   return I18N.t(appState.language, key, vars);
 }
 
+function getMotionDuration(durationMs) {
+  if (appState.reducedMotion) return 0;
+  return Number.isFinite(durationMs) && durationMs > 0 ? durationMs : 220;
+}
+
+function getScrollBehavior() {
+  return appState.reducedMotion ? "auto" : "smooth";
+}
+
+function triggerHapticCue(duration = 14) {
+  if (!appState.hapticsEnabled) return;
+  if (!navigator?.vibrate) return;
+  navigator.vibrate(duration);
+}
+
+function playSoundCue(kind = "tap") {
+  if (!appState.soundEnabled) return;
+  const AudioContextCtor = window.AudioContext || window.webkitAudioContext;
+  if (!AudioContextCtor) return;
+  try {
+    if (!uiAudioContext) {
+      uiAudioContext = new AudioContextCtor();
+    }
+    if (uiAudioContext.state === "suspended") {
+      uiAudioContext.resume();
+    }
+    const oscillator = uiAudioContext.createOscillator();
+    const gain = uiAudioContext.createGain();
+    const now = uiAudioContext.currentTime;
+    const frequency = kind === "success" ? 820 : 680;
+    const length = kind === "success" ? 0.06 : 0.045;
+    oscillator.type = "triangle";
+    oscillator.frequency.setValueAtTime(frequency, now);
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.03, now + 0.01);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + length);
+    oscillator.connect(gain);
+    gain.connect(uiAudioContext.destination);
+    oscillator.start(now);
+    oscillator.stop(now + length + 0.01);
+  } catch {
+    // Audio cues are optional and should fail silently.
+  }
+}
+
+function getActiveThreadKey() {
+  if (appState.chatMode === "watson") {
+    return `watson:${appState.caseId || "default"}`;
+  }
+  if (appState.caseThreadMode === "case") {
+    return `case:${appState.caseId || "default"}:system`;
+  }
+  return `case:${appState.caseId || "default"}:character:${appState.activeCharacterId || "none"}`;
+}
+
+function saveActiveThreadScroll() {
+  if (!chatLogEl) return;
+  chatScrollPositions.set(getActiveThreadKey(), chatLogEl.scrollTop);
+}
+
+function restoreActiveThreadScroll() {
+  if (!chatLogEl) return;
+  const key = getActiveThreadKey();
+  if (chatScrollPositions.has(key)) {
+    chatLogEl.scrollTop = chatScrollPositions.get(key);
+    return;
+  }
+  chatLogEl.scrollTop = chatLogEl.scrollHeight;
+}
+
+function scrollObservationSourceIntoView(hotspotId) {
+  if (!hotspotId) return;
+  const target = observationListEl?.querySelector(`[data-observation-source="${hotspotId}"]`);
+  if (!target) return;
+  target.scrollIntoView({ behavior: getScrollBehavior(), block: "nearest" });
+}
+
 function clearSceneTransitionTimer() {
   if (!sceneTransitionClearTimer) return;
   clearTimeout(sceneTransitionClearTimer);
@@ -516,9 +619,13 @@ function showSceneTransitionOverlay(label, { durationMs = 220 } = {}) {
   clearSceneTransitionTimer();
   sceneTransitionPending = true;
   sceneTransitionShownAt = Date.now();
-  sceneTransitionMinVisibleMs = Number.isFinite(durationMs) && durationMs > 0 ? durationMs : 220;
+  sceneTransitionMinVisibleMs = getMotionDuration(durationMs);
   sceneTransitionOverlayEl.textContent = String(label || "").trim();
   sceneTransitionOverlayEl.hidden = false;
+  if (appState.reducedMotion) {
+    sceneTransitionOverlayEl.classList.add("active");
+    return;
+  }
   requestAnimationFrame(() => {
     sceneTransitionOverlayEl.classList.add("active");
   });
@@ -538,6 +645,10 @@ function hideSceneTransitionOverlay({ delay = 0 } = {}) {
     sceneTransitionOverlayEl.textContent = "";
     sceneTransitionMinVisibleMs = 220;
   };
+  if (appState.reducedMotion) {
+    finalize();
+    return;
+  }
   if (waitMs > 0) {
     sceneTransitionClearTimer = setTimeout(finalize, waitMs);
     return;
@@ -815,6 +926,11 @@ function getCurrentScene() {
   return currentLocation?.scene || null;
 }
 
+function getSceneHotspots() {
+  const scene = getCurrentScene();
+  return Array.isArray(scene?.hotspots) ? scene.hotspots : [];
+}
+
 function getObservedEventsForCurrentLocation() {
   const currentId = appState.publicState?.current_location_id || "";
   const events = Array.isArray(appState.publicState?.observation_events)
@@ -828,6 +944,178 @@ function getObservedEventsForCurrentLocation() {
 function uniqueStringsByValue(values) {
   return Array.from(new Set((Array.isArray(values) ? values : []).map((value) => String(value || "").trim())))
     .filter(Boolean);
+}
+
+function getHotspotById(hotspotId) {
+  if (!hotspotId) return null;
+  return getSceneHotspots().find((entry) => entry.id === hotspotId) || null;
+}
+
+function getObservationEventByHotspotId(hotspotId) {
+  if (!hotspotId) return null;
+  return getObservedEventsForCurrentLocation().find((entry) => entry.hotspot_id === hotspotId) || null;
+}
+
+function buildHotspotDetail(hotspotId) {
+  if (!hotspotId) return null;
+  const hotspot = getHotspotById(hotspotId);
+  const observation = getObservationEventByHotspotId(hotspotId);
+  if (!hotspot && !observation) return null;
+  const label = observation?.label || hotspot?.label || hotspotId;
+  const note = observation?.note || hotspot?.observation_note || "";
+  const prompts = uniqueStringsByValue([
+    ...(Array.isArray(observation?.suggested_questions) ? observation.suggested_questions : []),
+    ...(Array.isArray(hotspot?.suggested_questions) ? hotspot.suggested_questions : [])
+  ]);
+  const observed = Boolean(observation || hotspot?.observed);
+  const timeMinutes = Number.isFinite(observation?.time_minutes) ? observation.time_minutes : null;
+  return {
+    hotspotId,
+    hotspot,
+    observation,
+    label,
+    note,
+    prompts,
+    observed,
+    timeMinutes
+  };
+}
+
+function selectHotspot(hotspotId) {
+  if (!hotspotId) return;
+  if (appState.selectedHotspotId === hotspotId) return;
+  appState.selectedHotspotId = hotspotId;
+  renderCurrentScene();
+}
+
+function renderScenePinList(hotspots) {
+  if (!scenePinListEl) return;
+  scenePinListEl.innerHTML = "";
+  if (!hotspots.length) {
+    const empty = document.createElement("span");
+    empty.className = "watson-empty";
+    empty.textContent = t("scenePinsEmpty");
+    scenePinListEl.appendChild(empty);
+    return;
+  }
+  hotspots.forEach((hotspot) => {
+    const pin = document.createElement("button");
+    pin.type = "button";
+    pin.className = "scene-pin";
+    if (hotspot.observed) {
+      pin.classList.add("observed");
+    }
+    if (hotspot.id === appState.selectedHotspotId) {
+      pin.classList.add("active");
+    }
+    pin.dataset.hotspotId = hotspot.id;
+    pin.dataset.pinAction = "observe";
+
+    const label = document.createElement("span");
+    label.className = "scene-pin-label";
+    label.textContent = hotspot.label || hotspot.id;
+    pin.appendChild(label);
+
+    const meta = document.createElement("span");
+    meta.className = "scene-pin-meta";
+    const statusKey = hotspot.observed ? "scenePinObserved" : "scenePinUnobserved";
+    const typeLabel = appState.analyzeMode && hotspot.object_type ? ` - ${hotspot.object_type}` : "";
+    meta.textContent = `${t(statusKey)}${typeLabel}`;
+    pin.appendChild(meta);
+
+    scenePinListEl.appendChild(pin);
+  });
+}
+
+function renderObservationSheet() {
+  if (!observationSheetEl) return;
+  const detail = buildHotspotDetail(appState.observationSheetHotspotId);
+  if (!detail) {
+    if (observationSheetTitleEl) observationSheetTitleEl.textContent = t("observationSheetEmptyTitle");
+    if (observationSheetNoteEl) observationSheetNoteEl.textContent = t("observationSheetNoSelection");
+    if (observationSheetMetaEl) observationSheetMetaEl.textContent = "";
+    if (observationSheetPromptListEl) {
+      observationSheetPromptListEl.innerHTML = "";
+    }
+    if (observationSheetObserveBtn) observationSheetObserveBtn.disabled = true;
+    if (observationSheetUsePromptBtn) observationSheetUsePromptBtn.disabled = true;
+    if (observationSheetJumpBtn) observationSheetJumpBtn.disabled = true;
+    return;
+  }
+
+  if (observationSheetTitleEl) observationSheetTitleEl.textContent = detail.label;
+  if (observationSheetNoteEl) observationSheetNoteEl.textContent = detail.note || t("observationSheetNoNote");
+  if (observationSheetMetaEl) {
+    const status = detail.observed ? t("scenePinObserved") : t("scenePinUnobserved");
+    const timeLabel = Number.isFinite(detail.timeMinutes) ? ` - T+${detail.timeMinutes}m` : "";
+    observationSheetMetaEl.textContent = `${status}${timeLabel}`;
+  }
+  if (observationSheetObserveBtn) {
+    observationSheetObserveBtn.disabled = detail.observed;
+    observationSheetObserveBtn.dataset.hotspotId = detail.hotspotId;
+    observationSheetObserveBtn.textContent = detail.observed
+      ? t("observationAlreadyObserved")
+      : t("observeAction");
+  }
+  const primaryPrompt = detail.prompts[0] || "";
+  if (observationSheetUsePromptBtn) {
+    observationSheetUsePromptBtn.disabled = !primaryPrompt;
+    observationSheetUsePromptBtn.dataset.prompt = primaryPrompt;
+  }
+  if (observationSheetJumpBtn) {
+    observationSheetJumpBtn.disabled = !detail.observed;
+    observationSheetJumpBtn.dataset.hotspotId = detail.hotspotId;
+  }
+
+  if (observationSheetPromptListEl) {
+    observationSheetPromptListEl.innerHTML = "";
+    if (!detail.prompts.length) {
+      const empty = document.createElement("span");
+      empty.className = "watson-empty";
+      empty.textContent = t("sceneNoPrompts");
+      observationSheetPromptListEl.appendChild(empty);
+    } else {
+      detail.prompts.forEach((prompt) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "prompt-chip";
+        button.dataset.observationPrompt = prompt;
+        button.textContent = prompt;
+        observationSheetPromptListEl.appendChild(button);
+      });
+    }
+  }
+}
+
+function openObservationSheet(hotspotId) {
+  if (!observationSheetEl || !hotspotId) return;
+  appState.observationSheetHotspotId = hotspotId;
+  renderObservationSheet();
+  observationSheetEl.hidden = false;
+  observationSheetEl.setAttribute("aria-hidden", "false");
+  observationSheetEl.classList.add("open");
+}
+
+function closeObservationSheet() {
+  if (!observationSheetEl) return;
+  observationSheetEl.hidden = true;
+  observationSheetEl.setAttribute("aria-hidden", "true");
+  observationSheetEl.classList.remove("open");
+}
+
+function insertPromptInComposer(prompt) {
+  const text = String(prompt || "").trim();
+  if (!text) return;
+  messageInput.value = text;
+  messageInput.focus();
+  if (appState.chatMode !== "case") {
+    setChatMode("case");
+  }
+  if (appState.caseThreadMode !== "character") {
+    setCaseThreadMode("character");
+  }
+  triggerHapticCue(10);
+  playSoundCue("tap");
 }
 
 function renderCurrentScene() {
@@ -859,22 +1147,45 @@ function renderCurrentScene() {
     sceneFallbackEl.hidden = Boolean(scene?.asset_path);
   }
 
-  const hotspots = Array.isArray(scene?.hotspots) ? scene.hotspots : [];
+  const hotspots = getSceneHotspots();
+  const hotspotIds = new Set(hotspots.map((entry) => entry.id));
+  if (appState.selectedHotspotId && !hotspotIds.has(appState.selectedHotspotId)) {
+    appState.selectedHotspotId = null;
+  }
+  if (!appState.selectedHotspotId && hotspots[0]?.id) {
+    appState.selectedHotspotId = hotspots[0].id;
+  }
   if (sceneHotspotsEl) {
     sceneHotspotsEl.innerHTML = "";
     hotspots.forEach((hotspot) => {
       const button = document.createElement("button");
       button.type = "button";
       button.className = `scene-hotspot${hotspot.observed ? " observed" : ""}`;
+      if (hotspot.id === appState.selectedHotspotId) {
+        button.classList.add("active");
+      }
+      if (appState.analyzeMode) {
+        button.classList.add("analyze");
+      }
       button.dataset.hotspotId = hotspot.id;
       button.style.left = `${Number(hotspot?.anchor?.x) || 50}%`;
       button.style.top = `${Number(hotspot?.anchor?.y) || 50}%`;
       button.title = hotspot.label || hotspot.id;
       button.setAttribute("aria-label", hotspot.label || hotspot.id);
-      button.textContent = hotspot.observed ? "✓" : "•";
+      const marker = document.createElement("span");
+      marker.className = "scene-hotspot-marker";
+      marker.textContent = hotspot.observed ? "✓" : "•";
+      button.appendChild(marker);
+      if (appState.analyzeMode) {
+        const tag = document.createElement("span");
+        tag.className = "scene-hotspot-tag";
+        tag.textContent = hotspot.label || hotspot.id;
+        button.appendChild(tag);
+      }
       sceneHotspotsEl.appendChild(button);
     });
   }
+  renderScenePinList(hotspots);
 
   const observedEvents = getObservedEventsForCurrentLocation();
   if (observationListEl) {
@@ -886,8 +1197,35 @@ function renderCurrentScene() {
     } else {
       observedEvents.slice(0, 6).forEach((entry) => {
         const li = document.createElement("li");
+        const hotspotId = entry.hotspot_id || "";
+        if (hotspotId) {
+          li.dataset.observationSource = hotspotId;
+        }
         const timeLabel = Number.isFinite(entry.time_minutes) ? `T+${entry.time_minutes}m` : "T+";
-        li.textContent = `${timeLabel} - ${entry.label || t("sceneObservedPrefix")}: ${entry.note || ""}`;
+        const summary = document.createElement("div");
+        summary.className = "observation-summary";
+        summary.textContent = `${timeLabel} - ${entry.label || t("sceneObservedPrefix")}: ${entry.note || ""}`;
+        li.appendChild(summary);
+
+        const actions = document.createElement("div");
+        actions.className = "observation-actions";
+        const expandBtn = document.createElement("button");
+        expandBtn.type = "button";
+        expandBtn.className = "ghost-inline observation-action";
+        expandBtn.dataset.observationExpand = hotspotId;
+        expandBtn.textContent = t("observationExpand");
+        actions.appendChild(expandBtn);
+
+        const firstPrompt = uniqueStringsByValue(entry.suggested_questions || [])[0];
+        if (firstPrompt) {
+          const useBtn = document.createElement("button");
+          useBtn.type = "button";
+          useBtn.className = "ghost-inline observation-action";
+          useBtn.dataset.observationPrompt = firstPrompt;
+          useBtn.textContent = t("observationUsePrompt");
+          actions.appendChild(useBtn);
+        }
+        li.appendChild(actions);
         observationListEl.appendChild(li);
       });
     }
@@ -917,6 +1255,9 @@ function renderCurrentScene() {
     }
   }
 
+  if (observationSheetEl && !observationSheetEl.hidden) {
+    renderObservationSheet();
+  }
   maybeCompleteSceneTransitionForRenderedScene();
 }
 
@@ -1196,7 +1537,12 @@ function eventCharacterId(event) {
 }
 
 function setCaseThreadMode(mode) {
-  appState.caseThreadMode = mode === "case" ? "case" : "character";
+  const nextMode = mode === "case" ? "case" : "character";
+  const changed = appState.caseThreadMode !== nextMode;
+  if (changed) {
+    saveActiveThreadScroll();
+  }
+  appState.caseThreadMode = nextMode;
   if (chatThreadCharacterBtn) {
     chatThreadCharacterBtn.classList.toggle("active", appState.caseThreadMode === "character");
   }
@@ -1205,6 +1551,9 @@ function setCaseThreadMode(mode) {
   }
   if (appState.chatMode === "case") {
     renderCaseChatLog();
+    if (changed) {
+      triggerHapticCue(8);
+    }
   }
 }
 
@@ -1213,6 +1562,7 @@ function renderCaseChatLog() {
   chatLogEl.innerHTML = "";
   if (!Array.isArray(events) || events.length === 0) {
     appendMessage(I18N.t(appState.language, "caseChatIntro"), "system");
+    restoreActiveThreadScroll();
     return;
   }
   const threadMode = appState.caseThreadMode === "case" ? "case" : "character";
@@ -1221,6 +1571,7 @@ function renderCaseChatLog() {
   if (threadMode === "character") {
     if (!activeCharacterId) {
       appendMessage(t("characterThreadSelect"), "system");
+      restoreActiveThreadScroll();
       return;
     }
     const activeCharacter = appState.characters.find((entry) => entry.id === activeCharacterId);
@@ -1230,6 +1581,7 @@ function renderCaseChatLog() {
     ));
     if (!threadEvents.length) {
       appendMessage(t("characterThreadEmpty", { name: activeName }), "system");
+      restoreActiveThreadScroll();
       return;
     }
     threadEvents.forEach((event) => {
@@ -1242,18 +1594,21 @@ function renderCaseChatLog() {
         appendMessage(event.content, "character");
       }
     });
+    restoreActiveThreadScroll();
     return;
   }
 
   const caseEvents = events.filter((event) => isCaseSystemEvent(event));
   if (!caseEvents.length) {
     appendMessage(I18N.t(appState.language, "caseChatIntro"), "system");
+    restoreActiveThreadScroll();
     return;
   }
   caseEvents.forEach((event) => {
     if (!event || typeof event.content !== "string") return;
     appendMessage(event.content, "system");
   });
+  restoreActiveThreadScroll();
 }
 
 function renderWatsonChatLog() {
@@ -1265,6 +1620,7 @@ function renderWatsonChatLog() {
   appState.watsonLog.forEach((entry) => {
     appendMessage(entry.text, entry.type);
   });
+  restoreActiveThreadScroll();
 }
 
 function renderChatLog() {
@@ -1322,11 +1678,14 @@ function renderCharacters() {
     }
     card.appendChild(textWrap);
     card.addEventListener("click", () => {
+      saveActiveThreadScroll();
       appState.activeCharacterId = character.id;
       storeActiveCharacter(appState.caseId, character.id);
       setChatMode("case");
       setCaseThreadMode("character");
       renderCharacters();
+      playSoundCue("tap");
+      triggerHapticCue(10);
     });
 
     characterListEl.appendChild(card);
@@ -1482,7 +1841,7 @@ function openSkillsDrawer({ focusSkillId } = {}) {
         card.classList.remove("highlight");
       });
       target.classList.add("highlight");
-      target.scrollIntoView({ behavior: "smooth", block: "start" });
+      target.scrollIntoView({ behavior: getScrollBehavior(), block: "start" });
     });
   }
 }
@@ -1527,6 +1886,9 @@ function flashDrawerTab() {
 
 function setChatMode(mode) {
   const nextMode = mode === "watson" ? "watson" : "case";
+  if (appState.chatMode !== nextMode) {
+    saveActiveThreadScroll();
+  }
   appState.chatMode = nextMode;
   if (chatTabCase) {
     chatTabCase.classList.toggle("active", nextMode === "case");
@@ -2145,7 +2507,9 @@ async function sendLocationAction(actionType, locationId = "") {
     const targetLocation = getLocationById(locationId);
     const selectedLabel = locationSelectEl?.selectedOptions?.[0]?.textContent || "";
     const targetName = (targetLocation?.name || selectedLabel || locationId || "").trim();
-    showSceneTransitionOverlay(t("sceneTransitionMoving", { location: targetName }), { durationMs: 220 });
+    showSceneTransitionOverlay(t("sceneTransitionMoving", { location: targetName }), {
+      durationMs: getMotionDuration(220)
+    });
   }
   try {
     const res = await fetch("/api/action", {
@@ -2175,7 +2539,7 @@ async function sendLocationAction(actionType, locationId = "") {
 
     const transitionDurationMs = Number(data?.transition?.duration_ms);
     if (Number.isFinite(transitionDurationMs) && transitionDurationMs > 0) {
-      sceneTransitionMinVisibleMs = transitionDurationMs;
+      sceneTransitionMinVisibleMs = getMotionDuration(transitionDurationMs);
     }
 
     appState.publicState = data.public_state;
@@ -2199,45 +2563,55 @@ async function sendLocationAction(actionType, locationId = "") {
   }
 }
 
-async function sendObserveAction(hotspotId) {
+async function sendObserveAction(hotspotId, { openSheet = true } = {}) {
   if (!appState.caseId || !hotspotId) return;
   const locationId = appState.publicState?.current_location_id || "";
   if (!locationId) return;
   const requestContext = createCaseRequestContext();
-  const res = await fetch("/api/observe", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      sessionId: appState.sessionId,
-      language: appState.language,
-      caseId: appState.caseId,
-      locationId,
-      hotspotId,
-      client_state: appState.clientState
-    })
-  });
-  const data = await res.json();
-  if (shouldIgnoreCaseResponse(requestContext, data)) return;
-  if (!res.ok) {
-    appendMessage(data.error || I18N.t(appState.language, "errorGeneric"), "system");
-    return;
-  }
-  appState.publicState = data.public_state;
-  if (data.client_state) {
-    appState.clientState = data.client_state;
-    storeClientState(appState.clientState);
-  }
-  ensureActiveCharacterSelection();
-  renderCharacters();
-  renderPublicState();
-  renderCaseIntro();
-  if (appState.chatMode === "case") {
-    renderCaseChatLog();
-  }
-  if (data.model_used) {
-    modelUsedValue.textContent = data.model_used;
+  appState.selectedHotspotId = hotspotId;
+  try {
+    const res = await fetch("/api/observe", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        sessionId: appState.sessionId,
+        language: appState.language,
+        caseId: appState.caseId,
+        locationId,
+        hotspotId,
+        client_state: appState.clientState
+      })
+    });
+    const data = await res.json();
+    if (shouldIgnoreCaseResponse(requestContext, data)) return;
+    if (!res.ok) {
+      appendMessage(data.error || I18N.t(appState.language, "errorGeneric"), "system");
+      return;
+    }
+    appState.publicState = data.public_state;
+    if (data.client_state) {
+      appState.clientState = data.client_state;
+      storeClientState(appState.clientState);
+    }
+    ensureActiveCharacterSelection();
+    renderCharacters();
+    renderPublicState();
+    renderCaseIntro();
+    if (appState.chatMode === "case") {
+      renderCaseChatLog();
+    }
+    if (data.model_used) {
+      modelUsedValue.textContent = data.model_used;
+    }
+    playSoundCue("success");
+    triggerHapticCue(14);
+    if (openSheet) {
+      openObservationSheet(hotspotId);
+    }
+  } catch {
+    appendMessage(I18N.t(appState.language, "errorGeneric"), "system");
   }
 }
 

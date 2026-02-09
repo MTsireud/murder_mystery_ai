@@ -151,6 +151,10 @@
             </div>
             <p id="sceneMeta" class="scene-meta">-</p>
           </div>
+          <div class="scene-pins">
+            <h3 data-i18n="scenePinsTitle">Scene pins</h3>
+            <div id="scenePinList" class="scene-pin-list"></div>
+          </div>
           <div class="location-observations">
             <h3 data-i18n="sceneObservationsTitle">Observations</h3>
             <ul id="observationList" class="scene-checklist compact"></ul>
@@ -158,6 +162,24 @@
           <div class="location-prompts">
             <h3 data-i18n="scenePromptsTitle">Question prompts</h3>
             <div id="observationPromptList" class="prompt-chips"></div>
+          </div>
+          <div class="scene-settings">
+            <span class="scene-settings-title" data-i18n="sceneSettingsTitle">Interaction cues</span>
+            <label class="toggle">
+              <input id="analyzeToggle" type="checkbox" />
+              <span class="toggle-track"></span>
+              <span class="toggle-label" data-i18n="sceneAnalyzeToggle">Analyze overlays</span>
+            </label>
+            <label class="toggle">
+              <input id="hapticsToggle" type="checkbox" />
+              <span class="toggle-track"></span>
+              <span class="toggle-label" data-i18n="sceneHapticsToggle">Haptic cues</span>
+            </label>
+            <label class="toggle">
+              <input id="soundToggle" type="checkbox" />
+              <span class="toggle-track"></span>
+              <span class="toggle-label" data-i18n="sceneSoundToggle">Sound cues</span>
+            </label>
           </div>
           <div class="location-visited">
             <span data-i18n="visitedLocationsLabel">Visited locations</span>
@@ -371,6 +393,37 @@
         </div>
         <div id="briefingFolderView" class="briefing-view"></div>
         <div id="briefingWatsonView" class="briefing-view" hidden></div>
+      </section>
+    </div>
+
+    <div id="observationSheet" class="observation-sheet" hidden>
+      <div class="observation-sheet-backdrop" data-observation-sheet-close></div>
+      <section class="observation-sheet-panel" role="dialog" aria-modal="true" aria-labelledby="observationSheetTitle">
+        <header class="observation-sheet-header">
+          <div>
+            <p class="eyebrow" data-i18n="sceneObservationsTitle">Observations</p>
+            <h2 id="observationSheetTitle">-</h2>
+          </div>
+          <button id="observationSheetCloseBtn" class="drawer-close" type="button" data-i18n="close">Close</button>
+        </header>
+        <p id="observationSheetNote" class="observation-sheet-note"></p>
+        <p id="observationSheetMeta" class="observation-sheet-meta"></p>
+        <div class="observation-sheet-actions">
+          <button id="observationSheetObserveBtn" type="button" data-i18n="observeAction">Observe</button>
+          <button
+            id="observationSheetUsePromptBtn"
+            class="ghost-inline"
+            type="button"
+            data-i18n="observationUsePrompt"
+          >
+            Use in question
+          </button>
+          <button id="observationSheetJumpBtn" class="ghost-inline" type="button" data-i18n="observationJumpSource">
+            Jump to source
+          </button>
+        </div>
+        <h3 class="observation-sheet-prompts-title" data-i18n="scenePromptsTitle">Question prompts</h3>
+        <div id="observationSheetPromptList" class="prompt-chips"></div>
       </section>
     </div>
 

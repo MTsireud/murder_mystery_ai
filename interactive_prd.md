@@ -347,8 +347,8 @@ Bundle scope:
 3. Guardrail coverage + prompt rule updates: C5, C6
 
 Status:
-1. Not started
-2. Next feature to implement
+1. In progress
+2. Current feature in implementation
 
 #### FB4. Visual Grounding for MVP Case Fairness
 Customer outcome:
@@ -416,10 +416,10 @@ Dependencies:
 5. B9 depends on B7.
 
 ## Phase C - Investigation and Watson Integration
-- [ ] C1. Add `required_hotspot_ids` support to clue step availability checks in `/Users/markostsirekas/codex/murder_mystery/server/investigation.js`.
-- [ ] C2. Include hotspot-derived hints in `prompt_context.open_leads`.
-- [ ] C3. Extend Watson request context in `/Users/markostsirekas/codex/murder_mystery/server/index.js` + `/Users/markostsirekas/codex/murder_mystery/api/watson.js`.
-- [ ] C4. Update Watson prompt shaping in `/Users/markostsirekas/codex/murder_mystery/server/llm.js` to prioritize unexplored critical hotspots.
+- [x] C1. Add `required_hotspot_ids` support to clue step availability checks in `/Users/markostsirekas/codex/murder_mystery/server/investigation.js`.
+- [x] C2. Include hotspot-derived hints in `prompt_context.open_leads`.
+- [x] C3. Extend Watson request context in `/Users/markostsirekas/codex/murder_mystery/server/index.js` + `/Users/markostsirekas/codex/murder_mystery/api/watson.js`.
+- [x] C4. Update Watson prompt shaping in `/Users/markostsirekas/codex/murder_mystery/server/llm.js` to prioritize unexplored critical hotspots.
 - [ ] C5. Add guardrail tests for “Watson cannot reveal truth directly” unless reveal flow.
 - [ ] C6. Update agent prompt files for character/reducer/judge visual evidence rules:
   - `/Users/markostsirekas/codex/murder_mystery/agents/character/AGENTS.md`

@@ -124,6 +124,7 @@ const INVESTIGATION_LIBRARY = {
       {
         id: "camera_evidence",
         requires: [],
+        required_hotspot_ids: ["lot-gate-camera"],
         location_ids: ["glyfada-marina-lot", "marina-kiosk"],
         triggers: [
           "camera",
@@ -148,6 +149,7 @@ const INVESTIGATION_LIBRARY = {
       {
         id: "plate_check",
         requires: ["camera_evidence"],
+        required_hotspot_ids: ["office-log-terminal"],
         location_ids: ["glyfada-marina-office"],
         triggers: [
           "plate",
@@ -190,6 +192,7 @@ const INVESTIGATION_LIBRARY = {
       {
         id: "warehouse_link",
         requires: ["car_item"],
+        required_hotspot_ids: ["warehouse-loading-bay-cam"],
         location_ids: ["voss-warehouse"],
         triggers: [
           "warehouse",
@@ -209,6 +212,7 @@ const INVESTIGATION_LIBRARY = {
       {
         id: "killer_link",
         requires: ["warehouse_link"],
+        required_hotspot_ids: ["villa-study-phone"],
         location_ids: ["asteri-villa", "glyfada-marina-office"],
         triggers: [
           "call log",
@@ -577,6 +581,7 @@ function buildConstructorContext(caseContext, baseConfig) {
     clue_chain: ensureArray(baseConfig?.clue_chain).map((step) => ({
       id: step.id,
       requires: ensureArray(step.requires),
+      required_hotspot_ids: ensureArray(step.required_hotspot_ids),
       location_ids: ensureArray(step.location_ids),
       evidence: ensureArray(step.evidence).map((value) => getLocalized(value, "en")),
       leads: ensureArray(step.leads).map((value) => getLocalized(value, "en"))
@@ -674,6 +679,9 @@ function mergeStepMetadataFromBaseConfig(baseConfig, candidateConfig) {
     if (!Array.isArray(nextStep.location_ids) && Array.isArray(baseStep.location_ids)) {
       nextStep.location_ids = ensureArray(baseStep.location_ids).slice();
     }
+    if (!Array.isArray(nextStep.required_hotspot_ids) && Array.isArray(baseStep.required_hotspot_ids)) {
+      nextStep.required_hotspot_ids = ensureArray(baseStep.required_hotspot_ids).slice();
+    }
     return nextStep;
   });
   return merged;
@@ -730,10 +738,19 @@ function stepLocationMatches(step, activeLocationId) {
   return locationIds.includes(activeLocationId);
 }
 
-// Returns whether a clue step is currently unlockable given prerequisites and location.
-function stepAvailable(step, completedSet, activeLocationId = "") {
+// Enforces hotspot gating for clue steps that require specific scene observations first.
+function stepHotspotRequirementsMet(step, observedHotspotSet) {
+  const requiredHotspotIds = ensureArray(step?.required_hotspot_ids);
+  if (!requiredHotspotIds.length) return true;
+  return requiredHotspotIds.every((hotspotId) => observedHotspotSet.has(hotspotId));
+}
+
+// Returns whether a clue step is currently unlockable given prerequisites, location, and hotspot checks.
+function stepAvailable(step, completedSet, observedHotspotSet, activeLocationId = "") {
   const requirementsMet = ensureArray(step.requires).every((stepId) => completedSet.has(stepId));
   if (!requirementsMet) return false;
+  const hotspotMet = stepHotspotRequirementsMet(step, observedHotspotSet);
+  if (!hotspotMet) return false;
   return stepLocationMatches(step, activeLocationId);
 }
 
@@ -840,6 +857,34 @@ export async function applyInvestigationTurn({
       .filter((entry) => entry?.id)
       .map((entry) => [entry.id, getLocalized(entry.name, "el") || entry.id])
   );
+  const observedHotspotSet = new Set(
+    unique(
+      ensureArray(caseContext?.public_state?.observed_hotspot_ids).map((hotspotId) =>
+        String(hotspotId || "").trim()
+      )
+    )
+  );
+  const hotspotMetaById = new Map();
+  for (const location of caseLocations) {
+    const locationId = String(location?.id || "").trim();
+    if (!locationId) continue;
+    const locationNameEn = locationNameByIdEn.get(locationId) || locationId;
+    const locationNameEl = locationNameByIdEl.get(locationId) || locationId;
+    const hotspots = ensureArray(location?.scene?.hotspots);
+    for (const hotspot of hotspots) {
+      const hotspotId = String(hotspot?.id || "").trim();
+      if (!hotspotId) continue;
+      hotspotMetaById.set(hotspotId, {
+        hotspot_id: hotspotId,
+        label_en: getLocalized(hotspot.label, "en") || hotspotId,
+        label_el: getLocalized(hotspot.label, "el") || hotspotId,
+        location_id: locationId,
+        location_name_en: locationNameEn,
+        location_name_el: locationNameEl,
+        unlock_step_ids: ensureArray(hotspot.unlock_step_ids)
+      });
+    }
+  }
   const activeLocationId = String(caseContext?.public_state?.current_location_id || "").trim();
   const activeLocationName = locationNameById.get(activeLocationId) || activeLocationId || "-";
   let unlockedStep = null;
@@ -852,13 +897,14 @@ export async function applyInvestigationTurn({
     if (!matched) continue;
     const requiresMet = ensureArray(step.requires).every((stepId) => completedSet.has(stepId));
     const locationMet = stepLocationMatches(step, activeLocationId);
-    if (requiresMet && locationMet) {
+    const hotspotMet = stepHotspotRequirementsMet(step, observedHotspotSet);
+    if (requiresMet && locationMet && hotspotMet) {
       unlockedStep = step;
       break;
     }
     if (!blockedStep) {
       blockedStep = step;
-      blockedReason = !requiresMet ? "requirements" : "location";
+      blockedReason = !requiresMet ? "requirements" : !locationMet ? "location" : "hotspot";
     }
   }
 
@@ -897,13 +943,16 @@ export async function applyInvestigationTurn({
     break;
   }
 
+  const postUnlockCompletedSet = new Set(nextState.completed_step_ids);
   const pending = ensureArray(config.clue_chain).find((step) => {
     if (nextState.completed_step_ids.includes(step.id)) return false;
-    return ensureArray(step.requires).every((stepId) => nextState.completed_step_ids.includes(stepId));
+    const requiresMet = ensureArray(step.requires).every((stepId) => nextState.completed_step_ids.includes(stepId));
+    if (!requiresMet) return false;
+    return stepHotspotRequirementsMet(step, observedHotspotSet);
   });
   const pendingAtLocation = ensureArray(config.clue_chain).find((step) => {
     if (nextState.completed_step_ids.includes(step.id)) return false;
-    return stepAvailable(step, new Set(nextState.completed_step_ids), activeLocationId);
+    return stepAvailable(step, postUnlockCompletedSet, observedHotspotSet, activeLocationId);
   });
 
   let blockedHint = [];
@@ -925,17 +974,84 @@ export async function applyInvestigationTurn({
         `αυτό το ίχνος θέλει επιτόπιο έλεγχο σε ${requiredEl || "τη σχετική τοποθεσία"}`
       )
     ];
+  } else if (blockedStep && blockedReason === "hotspot") {
+    const missingHotspotIds = ensureArray(blockedStep.required_hotspot_ids)
+      .filter((hotspotId) => !observedHotspotSet.has(hotspotId));
+    const missingEn = missingHotspotIds
+      .map((hotspotId) => {
+        const hotspotMeta = hotspotMetaById.get(hotspotId);
+        if (!hotspotMeta) return hotspotId;
+        return `${hotspotMeta.label_en} (${hotspotMeta.location_name_en})`;
+      })
+      .filter(Boolean)
+      .join(", ");
+    const missingEl = missingHotspotIds
+      .map((hotspotId) => {
+        const hotspotMeta = hotspotMetaById.get(hotspotId);
+        if (!hotspotMeta) return hotspotId;
+        return `${hotspotMeta.label_el} (${hotspotMeta.location_name_el})`;
+      })
+      .filter(Boolean)
+      .join(", ");
+    blockedHint = [
+      loc(
+        `observe ${missingEn || "the required scene hotspot"} before pressing this lead`,
+        `παρατήρησε ${missingEl || "το απαιτούμενο σημείο σκηνής"} πριν πιέσεις αυτό το ίχνος`
+      )
+    ];
   }
 
-  const openLeads = localizeList(((pendingAtLocation || pending) && (pendingAtLocation || pending).leads) || [], lang).concat(
-    localizeList(blockedHint, lang)
+  const unresolvedStepIdSet = new Set(
+    ensureArray(config.clue_chain)
+      .filter((step) => !postUnlockCompletedSet.has(step.id))
+      .map((step) => step.id)
   );
+  const hotspotDerivedLeadEntries = [];
+  for (const hotspotMeta of hotspotMetaById.values()) {
+    if (observedHotspotSet.has(hotspotMeta.hotspot_id)) continue;
+    const unlockStepIds = ensureArray(hotspotMeta.unlock_step_ids)
+      .filter((stepId) => unresolvedStepIdSet.has(stepId));
+    if (!unlockStepIds.length) continue;
+    hotspotDerivedLeadEntries.push({
+      hotspot_id: hotspotMeta.hotspot_id,
+      hotspot_label_en: hotspotMeta.label_en,
+      hotspot_label_el: hotspotMeta.label_el,
+      location_id: hotspotMeta.location_id,
+      location_name_en: hotspotMeta.location_name_en,
+      location_name_el: hotspotMeta.location_name_el,
+      unlock_step_ids: unlockStepIds,
+      lead: loc(
+        `observe ${hotspotMeta.label_en} at ${hotspotMeta.location_name_en} to progress pending clue checks`,
+        `παρατήρησε ${hotspotMeta.label_el} στο ${hotspotMeta.location_name_el} για να προχωρήσουν τα εκκρεμή ίχνη`
+      )
+    });
+  }
+  hotspotDerivedLeadEntries.sort((a, b) => {
+    const aActive = a.location_id === activeLocationId ? 1 : 0;
+    const bActive = b.location_id === activeLocationId ? 1 : 0;
+    if (aActive !== bActive) return bActive - aActive;
+    return b.unlock_step_ids.length - a.unlock_step_ids.length;
+  });
+  const hotspotDerivedLeads = hotspotDerivedLeadEntries.slice(0, 3).map((entry) => entry.lead);
+  const openLeads = unique(
+    localizeList(((pendingAtLocation || pending) && (pendingAtLocation || pending).leads) || [], lang)
+      .concat(localizeList(blockedHint, lang))
+      .concat(localizeList(hotspotDerivedLeads, lang))
+  );
+  const recommendedHotspots = hotspotDerivedLeadEntries.slice(0, 4).map((entry) => ({
+    hotspot_id: entry.hotspot_id,
+    hotspot_label: lang === "el" ? entry.hotspot_label_el : entry.hotspot_label_en,
+    location_id: entry.location_id,
+    location_name: lang === "el" ? entry.location_name_el : entry.location_name_en,
+    unlock_step_ids: entry.unlock_step_ids
+  }));
 
   const promptContext = {
     strategy: strategy.primary,
     chain_progress: `${nextState.completed_step_ids.length}/${ensureArray(config.clue_chain).length}`,
     revealed_facts: localizeFacts(config, nextState.revealed_fact_ids, lang),
     open_leads: openLeads,
+    recommended_hotspots: recommendedHotspots,
     active_location: activeLocationName,
     blocked_reason: blockedReason || "",
     recent_strategies: ensureArray(nextState.strategy_log)

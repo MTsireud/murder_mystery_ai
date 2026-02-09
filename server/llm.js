@@ -810,7 +810,8 @@ function buildWatsonPrompt({
   boardState,
   tools,
   settings,
-  stuckSignal
+  stuckSignal,
+  evidenceContext
 }) {
   const lang = normalizeLanguage(language);
   const languageName = lang === "el" ? "Greek" : "English";
@@ -884,6 +885,42 @@ function buildWatsonPrompt({
   const knownCharacters = (allCharacters || [])
     .map((character) => `${character.name} (${getLocalized(character.role, lang)})`)
     .join(", ");
+  const safeEvidenceContext = evidenceContext && typeof evidenceContext === "object"
+    ? evidenceContext
+    : {};
+  const observedHotspots = Array.isArray(safeEvidenceContext.observed_hotspots)
+    ? safeEvidenceContext.observed_hotspots.slice(0, 8)
+    : [];
+  const unexploredCriticalHotspots = Array.isArray(safeEvidenceContext.unexplored_critical_hotspots)
+    ? safeEvidenceContext.unexplored_critical_hotspots.slice(0, 8)
+    : [];
+  const recommendedNextHotspots = Array.isArray(safeEvidenceContext.recommended_next_hotspots)
+    ? safeEvidenceContext.recommended_next_hotspots.slice(0, 3)
+    : [];
+  const observedHotspotLines = observedHotspots.length
+    ? observedHotspots
+        .map((entry) => `${entry.hotspot_label || entry.hotspot_id || "-"} @ ${entry.location_name || "-"}`)
+        .join(" | ")
+    : "-";
+  const unexploredCriticalLines = unexploredCriticalHotspots.length
+    ? unexploredCriticalHotspots
+        .map((entry) => {
+          const reason = entry.reason ? ` (${entry.reason})` : "";
+          return `${entry.hotspot_label || entry.hotspot_id || "-"} @ ${entry.location_name || "-"}${reason}`;
+        })
+        .join(" | ")
+    : "-";
+  const recommendedHotspotLines = recommendedNextHotspots.length
+    ? recommendedNextHotspots
+        .map((entry) => {
+          const prompt = entry.suggested_prompt ? ` | Prompt: ${entry.suggested_prompt}` : "";
+          return `${entry.hotspot_label || entry.hotspot_id || "-"} @ ${entry.location_name || "-"}${prompt}`;
+        })
+        .join(" | ")
+    : "-";
+  const hotspotPriorityGuidance = unexploredCriticalHotspots.length
+    ? "Priority rule: lead with one unexplored critical hotspot by name and location before generic tool advice."
+    : "Priority rule: if no critical hotspot remains, move to timeline/relationship validation.";
 
   const settingsLine = `Frequency: ${settings.frequency}. Style: ${settings.style}. Quality: ${settings.quality}.`;
   let qualityLine = "Tone: sharp, clear, evidence-weighted.";
@@ -919,6 +956,7 @@ function buildWatsonPrompt({
     "Do not become cryptic. Keep hints understandable in gameplay.",
     "Never claim to know the real solution. Use only the case snapshot and conversation.",
     "Do not reveal hidden truth or private facts. Treat all claims as uncertain.",
+    "Never claim a hotspot proves guilt; frame it as a test path.",
     "If the user rejects an idea, acknowledge it and do not repeat that idea.",
     "Keep the chat in context. Refer to recent user messages when useful.",
     `${settingsLine}`,
@@ -926,6 +964,7 @@ function buildWatsonPrompt({
     `${toolGuidance}`,
     `${styleGuidance}`,
     `${stuckGuidance}`,
+    `${hotspotPriorityGuidance}`,
     "Keep replies concise (2-4 sentences).",
     "",
     "Case snapshot:",
@@ -943,6 +982,9 @@ function buildWatsonPrompt({
     `- Contradictions: ${contradictionLines}`,
     `- Relationships: ${relationshipLines}`,
     `- People: ${knownCharacters || "-"}`,
+    `- Observed hotspots: ${observedHotspotLines}`,
+    `- Unexplored critical hotspots: ${unexploredCriticalLines}`,
+    `- Recommended next hotspots: ${recommendedHotspotLines}`,
     "",
     "Available tools:",
     toolLines,
@@ -974,7 +1016,8 @@ export async function generateWatsonResponse({
   boardState,
   tools,
   settings,
-  history
+  history,
+  evidenceContext
 }) {
   const lang = normalizeLanguage(language);
   const client = getOpenAIClient();
@@ -983,14 +1026,21 @@ export async function generateWatsonResponse({
   const currentLocationName = getLocalized(publicState?.current_location_name, lang)
     || getLocalized(publicState?.case_location, lang)
     || "the scene";
+  const recommendedHotspot = Array.isArray(evidenceContext?.recommended_next_hotspots)
+    ? evidenceContext.recommended_next_hotspots[0]
+    : null;
+  const hotspotTarget = recommendedHotspot
+    ? `${recommendedHotspot.hotspot_label || recommendedHotspot.hotspot_id || "hotspot"} @ ${recommendedHotspot.location_name || currentLocationName}`
+    : currentLocationName;
+  const hotspotPrompt = String(recommendedHotspot?.suggested_prompt || "").trim();
 
   const temperature =
     normalizedSettings.quality < 35 ? 0.9 : normalizedSettings.quality < 70 ? 0.65 : 0.45;
 
   if (!client || USE_MOCK) {
     const stuckFallback = lang === "el"
-      ? `Κοίτα τη σκιά, όχι το θόρυβο. Ίχνος: κάτι δεν δένει στο ${currentLocationName}. Next: πήγαινε εκεί και ρώτα τον διαθέσιμο μάρτυρα τι παρατήρησε πρώτο.`
-      : `Watch the shadow, not the noise. Hint: something at ${currentLocationName} feels off. Next: move there and ask the on-site contact what they noticed first.`;
+      ? `Κοίτα τη σκιά, όχι το θόρυβο. Ίχνος: έλεγξε ${hotspotTarget}. Next: ${hotspotPrompt || "πάρε επιτόπια επιβεβαίωση για αυτό το σημείο."}`
+      : `Watch the shadow, not the noise. Hint: check ${hotspotTarget}. Next: ${hotspotPrompt || "get an on-site verification for that spot."}`;
     const fallback = {
       dialogue:
         stuckSignal
@@ -1015,7 +1065,8 @@ export async function generateWatsonResponse({
     boardState,
     tools,
     settings: normalizedSettings,
-    stuckSignal
+    stuckSignal,
+    evidenceContext
   });
   try {
     const responseParams = {
@@ -1041,8 +1092,8 @@ export async function generateWatsonResponse({
       return {
         dialogue:
           lang === "el"
-            ? `Κάτι λείπει στο μοτίβο. Hint: τσέκαρε ξανά το ${currentLocationName}. Next: κλείδωσε ποιος ήταν εκεί στο κρίσιμο λεπτό.`
-            : `There is a gap in the pattern. Hint: re-check ${currentLocationName}. Next: lock who was there at the key minute.`,
+            ? `Κάτι λείπει στο μοτίβο. Hint: τσέκαρε ${hotspotTarget}. Next: ${hotspotPrompt || "κλείδωσε ποιος ήταν εκεί στο κρίσιμο λεπτό."}`
+            : `There is a gap in the pattern. Hint: re-check ${hotspotTarget}. Next: ${hotspotPrompt || "lock who was there at the key minute."}`,
         _meta: {
           model_used: ROUTINE_MODEL,
           model_selected: ROUTINE_MODEL,
@@ -1065,8 +1116,8 @@ export async function generateWatsonResponse({
     return {
       dialogue:
         lang === "el"
-          ? `Το νήμα είναι λεπτό, όχι χαμένο. Hint: κάτι στον χώρο δεν κολλάει. Next: ζήτα ένα συγκεκριμένο σημείο χρόνου από τον επόμενο μάρτυρα.`
-          : `The thread is thin, not gone. Hint: something in the location is off. Next: ask your next witness for one precise time anchor.`,
+          ? `Το νήμα είναι λεπτό, όχι χαμένο. Hint: έλεγξε ${hotspotTarget}. Next: ${hotspotPrompt || "ζήτα ένα συγκεκριμένο σημείο χρόνου από τον επόμενο μάρτυρα."}`
+          : `The thread is thin, not gone. Hint: check ${hotspotTarget}. Next: ${hotspotPrompt || "ask your next witness for one precise time anchor."}`,
       _meta: {
         model_used: "fallback",
         model_selected: ROUTINE_MODEL,
