@@ -129,6 +129,32 @@ function ensureLocationState(state) {
   state.public_state.visited_location_ids = visited;
   state.public_state.location_intel_ids = uniqueStrings(state.public_state.location_intel_ids);
   state.public_state.introduced_character_ids = uniqueStrings(state.public_state.introduced_character_ids);
+  const hotspotIds = new Set();
+  locations.forEach((location) => {
+    const hotspots = Array.isArray(location?.scene?.hotspots) ? location.scene.hotspots : [];
+    hotspots.forEach((hotspot) => {
+      const id = String(hotspot?.id || "").trim();
+      if (id) hotspotIds.add(id);
+    });
+  });
+  state.public_state.observed_hotspot_ids = uniqueStrings(state.public_state.observed_hotspot_ids)
+    .filter((id) => hotspotIds.has(id));
+  const events = Array.isArray(state.public_state.observation_events)
+    ? state.public_state.observation_events
+    : [];
+  state.public_state.observation_events = events
+    .filter((entry) => entry && typeof entry === "object")
+    .map((entry) => ({
+      id: String(entry.id || ""),
+      hotspot_id: String(entry.hotspot_id || ""),
+      location_id: String(entry.location_id || ""),
+      time_minutes: Number.isFinite(entry.time_minutes) ? entry.time_minutes : state.public_state.time_minutes,
+      note: entry.note || loc("Scene detail logged.", "Καταγράφηκε λεπτομέρεια σκηνής."),
+      label: entry.label || loc("Observation", "Παρατήρηση"),
+      suggested_questions: Array.isArray(entry.suggested_questions) ? entry.suggested_questions : []
+    }))
+    .filter((entry) => hotspotIds.has(entry.hotspot_id) && locationIds.has(entry.location_id))
+    .slice(-60);
 }
 
 function getCurrentLocationId(state) {
@@ -138,6 +164,42 @@ function getCurrentLocationId(state) {
 
 function getLocationById(state, locationId) {
   return getCaseLocations(state).find((entry) => entry.id === locationId) || null;
+}
+
+function getSceneHotspots(location) {
+  const hotspots = Array.isArray(location?.scene?.hotspots) ? location.scene.hotspots : [];
+  return hotspots.filter((entry) => entry && entry.id);
+}
+
+function getHotspotById(location, hotspotId) {
+  if (!hotspotId) return null;
+  return getSceneHotspots(location).find((entry) => String(entry.id) === String(hotspotId)) || null;
+}
+
+function buildHotspotEvidence(location, hotspot) {
+  const locationNameEn = getLocalized(location?.name, "en") || location?.id || "scene";
+  const locationNameEl = getLocalized(location?.name, "el") || locationNameEn;
+  const noteEn = getLocalized(hotspot?.observation_note, "en")
+    || getLocalized(location?.hint, "en")
+    || "A scene detail stands out.";
+  const noteEl = getLocalized(hotspot?.observation_note, "el")
+    || getLocalized(location?.hint, "el")
+    || "Ξεχωρίζει μια λεπτομέρεια σκηνής.";
+  return loc(
+    `Observation (${locationNameEn}): ${noteEn}`,
+    `Παρατήρηση (${locationNameEl}): ${noteEl}`
+  );
+}
+
+function buildObservationPromptFallback(location, hotspot) {
+  const locationNameEn = getLocalized(location?.name, "en") || location?.id || "this location";
+  const locationNameEl = getLocalized(location?.name, "el") || locationNameEn;
+  const labelEn = getLocalized(hotspot?.label, "en") || "this detail";
+  const labelEl = getLocalized(hotspot?.label, "el") || "αυτή τη λεπτομέρεια";
+  return loc(
+    `Who can verify ${labelEn} at ${locationNameEn}?`,
+    `Ποιος μπορεί να επιβεβαιώσει ${labelEl} στο ${locationNameEl};`
+  );
 }
 
 function getCharacterLocationIds(character) {
@@ -288,7 +350,8 @@ export async function runTurn({ state, characterId, message, language, modelMode
       content: message,
       visibility: ["detective", characterId],
       time_minutes: now,
-      location_id: currentLocationId
+      location_id: currentLocationId,
+      character_id: characterId
     })
   );
 
@@ -298,7 +361,8 @@ export async function runTurn({ state, characterId, message, language, modelMode
       content: characterResponse.dialogue,
       visibility: ["detective", characterId],
       time_minutes: now,
-      location_id: currentLocationId
+      location_id: currentLocationId,
+      character_id: characterId
     })
   );
 
@@ -416,6 +480,7 @@ export async function runLocationAction({ state, actionType, locationId, languag
   let evidenceDelta = [];
   let timeAdvance = 0;
   let dialogue = "";
+  let transition = null;
 
   if (action === "move") {
     if (targetLocation.id === currentLocationId) {
@@ -433,6 +498,8 @@ export async function runLocationAction({ state, actionType, locationId, languag
         })
       );
     } else {
+      const fromLocation = getLocationById(state, currentLocationId);
+      const fromName = getLocalized(fromLocation?.name, lang) || currentLocationId || "";
       state.public_state.current_location_id = targetLocation.id;
       if (!state.public_state.visited_location_ids.includes(targetLocation.id)) {
         state.public_state.visited_location_ids.push(targetLocation.id);
@@ -443,6 +510,14 @@ export async function runLocationAction({ state, actionType, locationId, languag
         lang === "el"
           ? `Μετακινήθηκες στο ${targetName}.`
           : `You move to ${targetName}.`;
+      transition = {
+        type: "move",
+        from_location_id: currentLocationId || "",
+        from_location_name: fromName,
+        to_location_id: targetLocation.id,
+        to_location_name: targetName,
+        duration_ms: 220
+      };
       eventDelta.push(
         pushEvent(state, {
           type: "detective_move",
@@ -508,18 +583,155 @@ export async function runLocationAction({ state, actionType, locationId, languag
     );
   }
 
+  const localizedPublicState = localizePublicState(state.public_state, lang);
+
   return {
     action,
     location_id: targetLocation.id,
     dialogue,
     event_delta: eventDelta,
     time_advance_minutes: timeAdvance,
-    public_state: localizePublicState(state.public_state, lang),
+    public_state: localizedPublicState,
+    current_scene: localizedPublicState.current_scene || null,
+    transition,
     evidence_delta: localizeList(evidenceDelta, lang),
     accusations_delta: [],
     model_used: "system",
     model_selected: "system",
     model_mode: "action",
+    model_mock: true
+  };
+}
+
+export async function runObserveAction({ state, locationId, hotspotId, language }) {
+  const lang = normalizeLanguage(language);
+  ensureLocationState(state);
+  const currentLocationId = getCurrentLocationId(state);
+  const targetLocationId = String(locationId || currentLocationId || "").trim();
+  const targetLocation = getLocationById(state, targetLocationId);
+  if (!targetLocation) {
+    return {
+      error:
+        lang === "el"
+          ? "Μη έγκυρη τοποθεσία για παρατήρηση."
+          : "Invalid location for observation."
+    };
+  }
+  if (targetLocation.id !== currentLocationId) {
+    const currentLocation = getLocationById(state, currentLocationId);
+    const currentName = getLocalized(currentLocation?.name, lang) || currentLocationId || "current location";
+    return {
+      error:
+        lang === "el"
+          ? `Πρέπει πρώτα να μετακινηθείς. Βρίσκεσαι στο ${currentName}.`
+          : `Move there first. You are currently at ${currentName}.`
+    };
+  }
+
+  const hotspot = getHotspotById(targetLocation, hotspotId);
+  if (!hotspot) {
+    return {
+      error:
+        lang === "el"
+          ? "Δεν βρέθηκε σημείο παρατήρησης."
+          : "Observation hotspot not found."
+    };
+  }
+
+  const hotspotLabel = getLocalized(hotspot.label, lang) || hotspot.id;
+  const hotspotNote = getLocalized(hotspot.observation_note, lang)
+    || getLocalized(targetLocation.hint, lang)
+    || (lang === "el" ? "Υπάρχει μια λεπτομέρεια που αξίζει έλεγχο." : "There is a detail worth checking.");
+  const observedSet = new Set(uniqueStrings(state.public_state.observed_hotspot_ids));
+  const alreadyObserved = observedSet.has(hotspot.id);
+  const repeatable = Boolean(hotspot.repeatable);
+  const firstObservation = !alreadyObserved;
+
+  if (!alreadyObserved) {
+    observedSet.add(hotspot.id);
+    state.public_state.observed_hotspot_ids = Array.from(observedSet);
+  }
+
+  const timeAdvance = firstObservation ? 3 : (repeatable ? 2 : 1);
+  state.public_state.time_minutes += timeAdvance;
+
+  const eventDelta = [];
+  const dialogue = firstObservation
+    ? (lang === "el"
+      ? `Παρατήρηση (${hotspotLabel}): ${hotspotNote}`
+      : `Observation (${hotspotLabel}): ${hotspotNote}`)
+    : (lang === "el"
+      ? `Ξαναελέγχεις το ${hotspotLabel}. Δεν εμφανίζεται νέα πληροφορία.`
+      : `You re-check ${hotspotLabel}. No new signal appears yet.`);
+
+  eventDelta.push(
+    pushEvent(state, {
+      type: "location_observation",
+      content: dialogue,
+      visibility: ["detective"],
+      time_minutes: state.public_state.time_minutes,
+      location_id: targetLocation.id,
+      hotspot_id: hotspot.id
+    })
+  );
+
+  const suggestedQuestions = Array.isArray(hotspot.suggested_questions) && hotspot.suggested_questions.length
+    ? hotspot.suggested_questions
+    : [buildObservationPromptFallback(targetLocation, hotspot)];
+
+  if (firstObservation || repeatable) {
+    const observationEvents = Array.isArray(state.public_state.observation_events)
+      ? state.public_state.observation_events
+      : [];
+    observationEvents.push({
+      id: `${hotspot.id}:${state.public_state.time_minutes}`,
+      hotspot_id: hotspot.id,
+      location_id: targetLocation.id,
+      time_minutes: state.public_state.time_minutes,
+      label: hotspot.label || loc("Observation", "Παρατήρηση"),
+      note: hotspot.observation_note || loc(hotspotNote),
+      suggested_questions: suggestedQuestions
+    });
+    state.public_state.observation_events = observationEvents.slice(-60);
+  }
+
+  let evidenceDelta = [];
+  if (firstObservation) {
+    const evidenceEntry = buildHotspotEvidence(targetLocation, hotspot);
+    const beforeCount = Array.isArray(state.public_state.discovered_evidence)
+      ? state.public_state.discovered_evidence.length
+      : 0;
+    addUnique(state.public_state.discovered_evidence, evidenceEntry);
+    const afterCount = Array.isArray(state.public_state.discovered_evidence)
+      ? state.public_state.discovered_evidence.length
+      : 0;
+    if (afterCount > beforeCount) {
+      evidenceDelta = [evidenceEntry];
+    }
+  }
+
+  const localizedPublicState = localizePublicState(state.public_state, lang);
+  return {
+    action: "observe",
+    location_id: targetLocation.id,
+    hotspot_id: hotspot.id,
+    dialogue,
+    observation: {
+      hotspot_id: hotspot.id,
+      hotspot_label: hotspotLabel,
+      note: hotspotNote,
+      already_observed: alreadyObserved
+    },
+    event_delta: eventDelta,
+    time_advance_minutes: timeAdvance,
+    public_state: localizedPublicState,
+    current_scene: localizedPublicState.current_scene || null,
+    evidence_delta: localizeList(evidenceDelta, lang),
+    accusations_delta: [],
+    suggested_prompts: localizeList(suggestedQuestions, lang),
+    model_used: "system",
+    model_selected: "system",
+    model_mode: "observe",
     model_mock: true
   };
 }

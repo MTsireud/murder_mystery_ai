@@ -11,7 +11,7 @@ import {
   resetSession
 } from "./state.js";
 import { createStateFromCase, getCaseById, getCaseList } from "./cases.js";
-import { runLocationAction, runTurn } from "./logic.js";
+import { runLocationAction, runObserveAction, runTurn } from "./logic.js";
 import { generateWatsonResponse } from "./llm.js";
 import { ensureCaseBriefing } from "./narrator.js";
 import { checkSolution } from "./checker.js";
@@ -161,6 +161,51 @@ app.post("/api/action", async (req, res) => {
     state: session.state,
     actionType,
     locationId,
+    language
+  });
+  if (result.error) {
+    res.status(400).json({ error: result.error });
+    return;
+  }
+  res.json({
+    sessionId: session.id,
+    ...result,
+    client_state: extractClientState(session.state)
+  });
+});
+
+app.post("/api/observe", async (req, res) => {
+  const { sessionId, locationId, hotspotId, language, caseId, client_state } = req.body || {};
+  if (!hotspotId) {
+    res.status(400).json({ error: "hotspotId is required" });
+    return;
+  }
+
+  if (client_state) {
+    const state = buildStateFromClient({ caseId, clientState: client_state });
+    const result = await runObserveAction({
+      state,
+      locationId,
+      hotspotId,
+      language
+    });
+    if (result.error) {
+      res.status(400).json({ error: result.error });
+      return;
+    }
+    res.json({
+      sessionId: sessionId || null,
+      ...result,
+      client_state: extractClientState(state)
+    });
+    return;
+  }
+
+  const session = getOrCreateSession(sessionId, caseId);
+  const result = await runObserveAction({
+    state: session.state,
+    locationId,
+    hotspotId,
     language
   });
   if (result.error) {

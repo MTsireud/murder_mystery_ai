@@ -24,6 +24,9 @@ const openNarrationBtn = document.getElementById("openNarrationBtn");
 const chatTabCase = document.getElementById("chatTabCase");
 const chatTabWatson = document.getElementById("chatTabWatson");
 const watsonHintBtn = document.getElementById("watsonHintBtn");
+const chatThreadTabs = document.getElementById("chatThreadTabs");
+const chatThreadCharacterBtn = document.getElementById("chatThreadCharacterBtn");
+const chatThreadCaseBtn = document.getElementById("chatThreadCaseBtn");
 const watsonCard = document.getElementById("watsonCard");
 const currentLocationValueEl = document.getElementById("currentLocationValue");
 const locationSelectEl = document.getElementById("locationSelect");
@@ -31,6 +34,13 @@ const moveLocationBtn = document.getElementById("moveLocationBtn");
 const inspectLocationBtn = document.getElementById("inspectLocationBtn");
 const visitedLocationsListEl = document.getElementById("visitedLocationsList");
 const locationContactsListEl = document.getElementById("locationContactsList");
+const sceneImageEl = document.getElementById("sceneImage");
+const sceneFallbackEl = document.getElementById("sceneFallback");
+const sceneHotspotsEl = document.getElementById("sceneHotspots");
+const sceneTransitionOverlayEl = document.getElementById("sceneTransitionOverlay");
+const sceneMetaEl = document.getElementById("sceneMeta");
+const observationListEl = document.getElementById("observationList");
+const observationPromptListEl = document.getElementById("observationPromptList");
 const skillsToggle = document.getElementById("skillsToggle");
 const skillsDrawer = document.getElementById("skillsDrawer");
 const skillsDrawerTab = document.getElementById("skillsDrawerTab");
@@ -73,6 +83,7 @@ const appState = {
   language: "en",
   modelMode: "auto",
   chatMode: "case",
+  caseThreadMode: "character",
   watsonLog: [],
   skillsEnabled: false,
   skillsDrawerOpen: false,
@@ -86,6 +97,10 @@ const appState = {
 
 let caseRequestEpoch = 0;
 let stateLoadRequestId = 0;
+let sceneTransitionPending = false;
+let sceneTransitionShownAt = 0;
+let sceneTransitionMinVisibleMs = 220;
+let sceneTransitionClearTimer = null;
 
 function invalidateCaseRequests() {
   caseRequestEpoch += 1;
@@ -490,6 +505,59 @@ function t(key, vars) {
   return I18N.t(appState.language, key, vars);
 }
 
+function clearSceneTransitionTimer() {
+  if (!sceneTransitionClearTimer) return;
+  clearTimeout(sceneTransitionClearTimer);
+  sceneTransitionClearTimer = null;
+}
+
+function showSceneTransitionOverlay(label, { durationMs = 220 } = {}) {
+  if (!sceneTransitionOverlayEl) return;
+  clearSceneTransitionTimer();
+  sceneTransitionPending = true;
+  sceneTransitionShownAt = Date.now();
+  sceneTransitionMinVisibleMs = Number.isFinite(durationMs) && durationMs > 0 ? durationMs : 220;
+  sceneTransitionOverlayEl.textContent = String(label || "").trim();
+  sceneTransitionOverlayEl.hidden = false;
+  requestAnimationFrame(() => {
+    sceneTransitionOverlayEl.classList.add("active");
+  });
+}
+
+function hideSceneTransitionOverlay({ delay = 0 } = {}) {
+  if (!sceneTransitionOverlayEl || !sceneTransitionPending) return;
+  clearSceneTransitionTimer();
+  const elapsedMs = Date.now() - sceneTransitionShownAt;
+  const minRemainingMs = Math.max(0, sceneTransitionMinVisibleMs - elapsedMs);
+  const extraDelayMs = Number.isFinite(delay) && delay > 0 ? delay : 0;
+  const waitMs = Math.max(minRemainingMs, extraDelayMs);
+  const finalize = () => {
+    sceneTransitionPending = false;
+    sceneTransitionOverlayEl.classList.remove("active");
+    sceneTransitionOverlayEl.hidden = true;
+    sceneTransitionOverlayEl.textContent = "";
+    sceneTransitionMinVisibleMs = 220;
+  };
+  if (waitMs > 0) {
+    sceneTransitionClearTimer = setTimeout(finalize, waitMs);
+    return;
+  }
+  finalize();
+}
+
+function maybeCompleteSceneTransitionForRenderedScene() {
+  if (!sceneTransitionPending) return;
+  const scene = getCurrentScene();
+  const hasImage = Boolean(scene?.asset_path);
+  if (!hasImage || !sceneImageEl) {
+    hideSceneTransitionOverlay();
+    return;
+  }
+  if (sceneImageEl.complete && sceneImageEl.naturalWidth > 0) {
+    hideSceneTransitionOverlay();
+  }
+}
+
 function formatPrompt(template, context) {
   if (!template) return "";
   return template
@@ -733,6 +801,123 @@ function getLocationById(locationId) {
     ? appState.publicState.case_locations
     : [];
   return locations.find((entry) => entry.id === locationId) || null;
+}
+
+function getCurrentLocation() {
+  const currentId = appState.publicState?.current_location_id || "";
+  return getLocationById(currentId);
+}
+
+function getCurrentScene() {
+  const sceneFromState = appState.publicState?.current_scene;
+  if (sceneFromState && typeof sceneFromState === "object") return sceneFromState;
+  const currentLocation = getCurrentLocation();
+  return currentLocation?.scene || null;
+}
+
+function getObservedEventsForCurrentLocation() {
+  const currentId = appState.publicState?.current_location_id || "";
+  const events = Array.isArray(appState.publicState?.observation_events)
+    ? appState.publicState.observation_events
+    : [];
+  return events
+    .filter((entry) => entry.location_id === currentId)
+    .sort((a, b) => (b.time_minutes || 0) - (a.time_minutes || 0));
+}
+
+function uniqueStringsByValue(values) {
+  return Array.from(new Set((Array.isArray(values) ? values : []).map((value) => String(value || "").trim())))
+    .filter(Boolean);
+}
+
+function renderCurrentScene() {
+  const scene = getCurrentScene();
+  const currentLocation = getCurrentLocation();
+  const locationName = currentLocation?.name || appState.publicState?.current_location_name || "-";
+  const descriptor = currentLocation?.descriptor || "";
+  const hint = currentLocation?.hint || t("sceneNoVisual");
+  const sceneMetaLine = [locationName, descriptor].filter(Boolean).join(" - ");
+  if (sceneMetaEl) {
+    sceneMetaEl.textContent = `${sceneMetaLine || locationName}: ${hint}`;
+  }
+
+  if (sceneImageEl) {
+    const hasImage = Boolean(scene?.asset_path);
+    if (hasImage) {
+      sceneImageEl.src = scene.asset_path;
+      sceneImageEl.alt = `${locationName} scene`;
+      sceneImageEl.hidden = false;
+    } else {
+      sceneImageEl.hidden = true;
+      sceneImageEl.removeAttribute("src");
+      sceneImageEl.alt = "";
+    }
+  }
+
+  if (sceneFallbackEl) {
+    sceneFallbackEl.textContent = `${locationName}${descriptor ? ` - ${descriptor}` : ""}`;
+    sceneFallbackEl.hidden = Boolean(scene?.asset_path);
+  }
+
+  const hotspots = Array.isArray(scene?.hotspots) ? scene.hotspots : [];
+  if (sceneHotspotsEl) {
+    sceneHotspotsEl.innerHTML = "";
+    hotspots.forEach((hotspot) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `scene-hotspot${hotspot.observed ? " observed" : ""}`;
+      button.dataset.hotspotId = hotspot.id;
+      button.style.left = `${Number(hotspot?.anchor?.x) || 50}%`;
+      button.style.top = `${Number(hotspot?.anchor?.y) || 50}%`;
+      button.title = hotspot.label || hotspot.id;
+      button.setAttribute("aria-label", hotspot.label || hotspot.id);
+      button.textContent = hotspot.observed ? "✓" : "•";
+      sceneHotspotsEl.appendChild(button);
+    });
+  }
+
+  const observedEvents = getObservedEventsForCurrentLocation();
+  if (observationListEl) {
+    observationListEl.innerHTML = "";
+    if (!observedEvents.length) {
+      const li = document.createElement("li");
+      li.textContent = t("sceneNoObservations");
+      observationListEl.appendChild(li);
+    } else {
+      observedEvents.slice(0, 6).forEach((entry) => {
+        const li = document.createElement("li");
+        const timeLabel = Number.isFinite(entry.time_minutes) ? `T+${entry.time_minutes}m` : "T+";
+        li.textContent = `${timeLabel} - ${entry.label || t("sceneObservedPrefix")}: ${entry.note || ""}`;
+        observationListEl.appendChild(li);
+      });
+    }
+  }
+
+  if (observationPromptListEl) {
+    observationPromptListEl.innerHTML = "";
+    const promptList = uniqueStringsByValue(
+      observedEvents.flatMap((entry) => (
+        Array.isArray(entry.suggested_questions) ? entry.suggested_questions : []
+      ))
+    );
+    if (!promptList.length) {
+      const empty = document.createElement("span");
+      empty.className = "watson-empty";
+      empty.textContent = t("sceneNoPrompts");
+      observationPromptListEl.appendChild(empty);
+    } else {
+      promptList.slice(0, 6).forEach((prompt) => {
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "prompt-chip";
+        button.dataset.observationPrompt = prompt;
+        button.textContent = prompt;
+        observationPromptListEl.appendChild(button);
+      });
+    }
+  }
+
+  maybeCompleteSceneTransitionForRenderedScene();
 }
 
 function isCharacterVisibleAtCurrentLocation(character) {
@@ -991,6 +1176,38 @@ function maybeAutoOpenBriefing() {
   openBriefingModal("folder");
 }
 
+function isConversationEvent(event) {
+  return event?.type === "detective_message" || event?.type === "character_response";
+}
+
+function isCaseSystemEvent(event) {
+  return (
+    event?.type === "detective_move"
+    || event?.type === "location_note"
+    || event?.type === "character_intro"
+    || event?.type === "location_observation"
+  );
+}
+
+function eventCharacterId(event) {
+  if (event?.character_id) return String(event.character_id);
+  const visibility = Array.isArray(event?.visibility) ? event.visibility : [];
+  return visibility.find((entry) => entry && entry !== "detective") || "";
+}
+
+function setCaseThreadMode(mode) {
+  appState.caseThreadMode = mode === "case" ? "case" : "character";
+  if (chatThreadCharacterBtn) {
+    chatThreadCharacterBtn.classList.toggle("active", appState.caseThreadMode === "character");
+  }
+  if (chatThreadCaseBtn) {
+    chatThreadCaseBtn.classList.toggle("active", appState.caseThreadMode === "case");
+  }
+  if (appState.chatMode === "case") {
+    renderCaseChatLog();
+  }
+}
+
 function renderCaseChatLog() {
   const events = appState.clientState?.events || [];
   chatLogEl.innerHTML = "";
@@ -998,20 +1215,44 @@ function renderCaseChatLog() {
     appendMessage(I18N.t(appState.language, "caseChatIntro"), "system");
     return;
   }
-  events.forEach((event) => {
+  const threadMode = appState.caseThreadMode === "case" ? "case" : "character";
+  const activeCharacterId = appState.activeCharacterId;
+
+  if (threadMode === "character") {
+    if (!activeCharacterId) {
+      appendMessage(t("characterThreadSelect"), "system");
+      return;
+    }
+    const activeCharacter = appState.characters.find((entry) => entry.id === activeCharacterId);
+    const activeName = activeCharacter?.name || I18N.t(appState.language, "characters");
+    const threadEvents = events.filter((event) => (
+      isConversationEvent(event) && eventCharacterId(event) === activeCharacterId
+    ));
+    if (!threadEvents.length) {
+      appendMessage(t("characterThreadEmpty", { name: activeName }), "system");
+      return;
+    }
+    threadEvents.forEach((event) => {
+      if (!event || typeof event.content !== "string") return;
+      if (event.type === "detective_message") {
+        appendMessage(event.content, "detective");
+        return;
+      }
+      if (event.type === "character_response") {
+        appendMessage(event.content, "character");
+      }
+    });
+    return;
+  }
+
+  const caseEvents = events.filter((event) => isCaseSystemEvent(event));
+  if (!caseEvents.length) {
+    appendMessage(I18N.t(appState.language, "caseChatIntro"), "system");
+    return;
+  }
+  caseEvents.forEach((event) => {
     if (!event || typeof event.content !== "string") return;
-    if (event.type === "detective_message") {
-      appendMessage(event.content, "detective");
-      return;
-    }
-    if (event.type === "character_response") {
-      appendMessage(event.content, "character");
-      return;
-    }
-    if (event.type === "detective_move" || event.type === "location_note" || event.type === "character_intro") {
-      appendMessage(event.content, "system");
-      return;
-    }
+    appendMessage(event.content, "system");
   });
 }
 
@@ -1030,6 +1271,9 @@ function renderChatLog() {
   if (appState.chatMode === "watson") {
     renderWatsonChatLog();
   } else {
+    if (chatThreadTabs) {
+      chatThreadTabs.hidden = false;
+    }
     renderCaseChatLog();
   }
 }
@@ -1081,11 +1325,8 @@ function renderCharacters() {
       appState.activeCharacterId = character.id;
       storeActiveCharacter(appState.caseId, character.id);
       setChatMode("case");
+      setCaseThreadMode("character");
       renderCharacters();
-      appendMessage(
-        I18N.t(appState.language, "nowSpeaking", { name: character.name }),
-        "detective"
-      );
     });
 
     characterListEl.appendChild(card);
@@ -1194,6 +1435,8 @@ function renderLocationPanel() {
       });
     }
   }
+
+  renderCurrentScene();
 }
 
 function setSkillsFeatureEnabled(enabled) {
@@ -1290,6 +1533,12 @@ function setChatMode(mode) {
   }
   if (chatTabWatson) {
     chatTabWatson.classList.toggle("active", nextMode === "watson");
+  }
+  if (chatThreadTabs) {
+    chatThreadTabs.hidden = nextMode !== "case";
+  }
+  if (nextMode === "case") {
+    setCaseThreadMode(appState.caseThreadMode);
   }
   messageInput.placeholder = t(nextMode === "watson" ? "watsonPlaceholder" : "placeholder");
   renderChatLog();
@@ -1889,7 +2138,73 @@ async function sendWatsonMessage(message, { autoSwitch = false } = {}) {
 async function sendLocationAction(actionType, locationId = "") {
   if (!appState.caseId) return;
   const requestContext = createCaseRequestContext();
-  const res = await fetch("/api/action", {
+  const currentLocationId = appState.publicState?.current_location_id || "";
+  const isMoveRequest = actionType === "move";
+  const willChangeLocation = isMoveRequest && locationId && locationId !== currentLocationId;
+  if (willChangeLocation) {
+    const targetLocation = getLocationById(locationId);
+    const selectedLabel = locationSelectEl?.selectedOptions?.[0]?.textContent || "";
+    const targetName = (targetLocation?.name || selectedLabel || locationId || "").trim();
+    showSceneTransitionOverlay(t("sceneTransitionMoving", { location: targetName }), { durationMs: 220 });
+  }
+  try {
+    const res = await fetch("/api/action", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        sessionId: appState.sessionId,
+        language: appState.language,
+        caseId: appState.caseId,
+        actionType,
+        locationId,
+        client_state: appState.clientState
+      })
+    });
+    const data = await res.json();
+    if (shouldIgnoreCaseResponse(requestContext, data)) {
+      hideSceneTransitionOverlay();
+      return;
+    }
+    if (!res.ok) {
+      hideSceneTransitionOverlay();
+      appendMessage(data.error || I18N.t(appState.language, "errorGeneric"), "system");
+      return;
+    }
+
+    const transitionDurationMs = Number(data?.transition?.duration_ms);
+    if (Number.isFinite(transitionDurationMs) && transitionDurationMs > 0) {
+      sceneTransitionMinVisibleMs = transitionDurationMs;
+    }
+
+    appState.publicState = data.public_state;
+    if (data.client_state) {
+      appState.clientState = data.client_state;
+      storeClientState(appState.clientState);
+    }
+    ensureActiveCharacterSelection();
+    renderCharacters();
+    renderPublicState();
+    renderCaseIntro();
+    if (appState.chatMode === "case") {
+      renderCaseChatLog();
+    }
+    if (data.model_used) {
+      modelUsedValue.textContent = data.model_used;
+    }
+  } catch (error) {
+    hideSceneTransitionOverlay();
+    appendMessage(I18N.t(appState.language, "errorGeneric"), "system");
+  }
+}
+
+async function sendObserveAction(hotspotId) {
+  if (!appState.caseId || !hotspotId) return;
+  const locationId = appState.publicState?.current_location_id || "";
+  if (!locationId) return;
+  const requestContext = createCaseRequestContext();
+  const res = await fetch("/api/observe", {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
@@ -1898,8 +2213,8 @@ async function sendLocationAction(actionType, locationId = "") {
       sessionId: appState.sessionId,
       language: appState.language,
       caseId: appState.caseId,
-      actionType,
       locationId,
+      hotspotId,
       client_state: appState.clientState
     })
   });
@@ -1940,6 +2255,9 @@ chatForm.addEventListener("submit", async (event) => {
     return;
   }
 
+  if (appState.caseThreadMode !== "character") {
+    setCaseThreadMode("character");
+  }
   appendMessage(message, "detective");
   messageInput.value = "";
   const requestContext = createCaseRequestContext();
@@ -2214,6 +2532,18 @@ if (chatTabCase) {
   });
 }
 
+if (chatThreadCharacterBtn) {
+  chatThreadCharacterBtn.addEventListener("click", () => {
+    setCaseThreadMode("character");
+  });
+}
+
+if (chatThreadCaseBtn) {
+  chatThreadCaseBtn.addEventListener("click", () => {
+    setCaseThreadMode("case");
+  });
+}
+
 if (chatTabWatson) {
   chatTabWatson.addEventListener("click", () => {
     setChatMode("watson");
@@ -2246,6 +2576,34 @@ if (inspectLocationBtn) {
   inspectLocationBtn.addEventListener("click", async () => {
     const currentId = appState.publicState?.current_location_id || locationSelectEl?.value || "";
     await sendLocationAction("inspect", currentId);
+  });
+}
+
+if (sceneImageEl) {
+  sceneImageEl.addEventListener("load", () => {
+    hideSceneTransitionOverlay();
+  });
+  sceneImageEl.addEventListener("error", () => {
+    hideSceneTransitionOverlay();
+  });
+}
+
+if (sceneHotspotsEl) {
+  sceneHotspotsEl.addEventListener("click", async (event) => {
+    const hotspotBtn = event.target.closest("[data-hotspot-id]");
+    if (!hotspotBtn) return;
+    await sendObserveAction(hotspotBtn.dataset.hotspotId);
+  });
+}
+
+if (observationPromptListEl) {
+  observationPromptListEl.addEventListener("click", (event) => {
+    const promptBtn = event.target.closest("[data-observation-prompt]");
+    if (!promptBtn) return;
+    const prompt = String(promptBtn.dataset.observationPrompt || "").trim();
+    if (!prompt) return;
+    messageInput.value = prompt;
+    messageInput.focus();
   });
 }
 

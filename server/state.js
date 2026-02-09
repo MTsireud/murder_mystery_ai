@@ -110,6 +110,12 @@ export function buildStateFromClient({ caseId, clientState }) {
   if (Array.isArray(publicState.introduced_character_ids)) {
     state.public_state.introduced_character_ids = publicState.introduced_character_ids;
   }
+  if (Array.isArray(publicState.observed_hotspot_ids)) {
+    state.public_state.observed_hotspot_ids = publicState.observed_hotspot_ids;
+  }
+  if (Array.isArray(publicState.observation_events)) {
+    state.public_state.observation_events = publicState.observation_events;
+  }
 
   if (Array.isArray(clientState.events)) {
     state.events = clientState.events;
@@ -169,6 +175,12 @@ export function extractClientState(state) {
         : [],
       introduced_character_ids: Array.isArray(state.public_state.introduced_character_ids)
         ? state.public_state.introduced_character_ids
+        : [],
+      observed_hotspot_ids: Array.isArray(state.public_state.observed_hotspot_ids)
+        ? state.public_state.observed_hotspot_ids
+        : [],
+      observation_events: Array.isArray(state.public_state.observation_events)
+        ? state.public_state.observation_events
         : []
     },
     characters: state.characters.map((character) => ({

@@ -78,6 +78,14 @@
               Need Hint
             </button>
           </div>
+          <div id="chatThreadTabs" class="chat-thread-tabs">
+            <button id="chatThreadCharacterBtn" class="chat-tab active" type="button" data-i18n="chatThreadCharacter">
+              Character Thread
+            </button>
+            <button id="chatThreadCaseBtn" class="chat-tab" type="button" data-i18n="chatThreadCase">
+              Case Thread
+            </button>
+          </div>
           <div id="chatLog" class="chat-log"></div>
           <form id="chatForm" class="composer">
             <input id="messageInput" type="text" placeholder="" autocomplete="off" />
@@ -134,14 +142,22 @@
               </button>
             </div>
           </div>
-          <div class="scene-stage" aria-hidden="true">
-            <div class="scene-grid"></div>
-            <div class="scene-marker marker-a">
-              <span data-i18n="sceneLabMarkerA">Camera cone</span>
+          <div class="scene-stage">
+            <div id="sceneVisual" class="scene-visual">
+              <img id="sceneImage" class="scene-image" alt="" hidden />
+              <div id="sceneFallback" class="scene-fallback" aria-hidden="true"></div>
+              <div id="sceneHotspots" class="scene-hotspots"></div>
+              <div id="sceneTransitionOverlay" class="scene-transition" hidden aria-live="polite"></div>
             </div>
-            <div class="scene-marker marker-b">
-              <span data-i18n="sceneLabMarkerB">Vehicle lane</span>
-            </div>
+            <p id="sceneMeta" class="scene-meta">-</p>
+          </div>
+          <div class="location-observations">
+            <h3 data-i18n="sceneObservationsTitle">Observations</h3>
+            <ul id="observationList" class="scene-checklist compact"></ul>
+          </div>
+          <div class="location-prompts">
+            <h3 data-i18n="scenePromptsTitle">Question prompts</h3>
+            <div id="observationPromptList" class="prompt-chips"></div>
           </div>
           <div class="location-visited">
             <span data-i18n="visitedLocationsLabel">Visited locations</span>

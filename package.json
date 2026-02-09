@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "node server/index.js",
+    "smoke:api": "node scripts/api_contract_smoke.mjs",
     "generate:athens-portraits": "node scripts/generate_athens_portraits.mjs",
     "construct:casepack": "node scripts/construct_casepack.mjs",
     "storylab:review": "node scripts/storylab_review.mjs",

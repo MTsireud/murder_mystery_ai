@@ -71,6 +71,13 @@ All scene objects and observation outcomes must be ledger-bound:
 2. No generated object can imply facts outside case truth.
 3. Constructor extensions can only add micro-detail, never alter truth anchors.
 
+### F7. Character-Scoped Interrogation Threads
+Interrogation transcript must be separated per NPC:
+1. Each character has an individual conversation thread with the detective.
+2. Location/system actions remain in a dedicated case/system thread.
+3. Switching active NPC shows only that character’s interrogation history by default.
+4. Player can still access a global audit timeline if needed.
+
 ## 5. In Scope vs Out of Scope
 
 In scope:
@@ -79,6 +86,7 @@ In scope:
 3. Backend contracts for scene/object metadata.
 4. Watson hint upgrades based on evidence state.
 5. Plot-consistency validation checks.
+6. Separate per-character chat threads in interrogation UX.
 
 Out of scope (post-MVP):
 1. Fully generated videos per transition.
@@ -131,6 +139,12 @@ Out of scope (post-MVP):
 2. `truth_ledger` and `clue_chain` remain canonical for unlock logic.
 3. Visual metadata can add affordance only, not alternate facts.
 
+### FR-7 Character-Specific Transcript UX
+1. Interrogation chat shall be scoped to the selected character NPC.
+2. System/location events shall not pollute individual character threads.
+3. Player shall be able to switch between character threads without losing context.
+4. A case-level thread/timeline shall remain available for movement and observation logs.
+
 ## 8. Data Model Changes
 
 ## 8.1 Case Authoring (`server/cases.js`)
@@ -163,6 +177,19 @@ Extend step gating support:
 Add normalization + defaults:
 1. `ensureSceneContracts(state)` validates location scene fields.
 2. `ensureHotspotToLedgerBindings(state)` ensures hotspot ids map only to known fact/step ids.
+
+## 8.5 Transcript State Model (`server/state.js` + client state)
+Add chat-thread state contracts:
+- `client_state.chat_threads`:
+  - `case`: append-only system/action feed ids
+  - `characters`: map of `character_id -> thread events[]`
+- `client_state.chat_thread_meta`:
+  - `last_active_character_id`
+  - optional unread counters per thread
+
+Rule:
+1. Global `events[]` remains canonical log.
+2. Thread projections are deterministic views over events and/or dedicated thread events.
 
 ## 9. API and Contract Changes
 
@@ -213,7 +240,17 @@ Dependencies:
 1. `server/index.js` or `api/watson.js` payload composition
 2. `server/llm.js` Watson prompt context section
 
-## 9.5 Agent Prompt Dependencies
+## 9.5 Transcript API Contract Changes
+1. `POST /api/state` returns thread payload:
+   - `chat_threads.case`
+   - `chat_threads.characters[character_id]`
+2. `POST /api/turn` returns:
+   - `thread_delta` for active character
+   - optional `case_thread_delta` for system events generated during turn
+3. `POST /api/action` and `POST /api/observe` return:
+   - `case_thread_delta` only (no direct character thread writes)
+
+## 9.6 Agent Prompt Dependencies
 Prompt-layer updates required to keep behavior aligned with truth:
 1. `/Users/markostsirekas/codex/murder_mystery/agents/character/AGENTS.md`
    - allow referencing observed hotspot claims as evidence context
@@ -271,12 +308,89 @@ Files:
 
 ## 12. Detailed Engineering Task Breakdown (Granular TODO)
 
+### 12.0 Customer-Facing Feature Bundles (Primary Tracking)
+Definition:
+1. A feature is a bundle of fixes and changes that materially improves customer experience.
+2. The A-F task lists below remain implementation checklists used to deliver each feature.
+
+#### FB1. Smooth Scene Navigation + Observation Loop
+Customer outcome:
+1. Players can move through locations, observe objects, and immediately use suggested prompts in interrogation.
+
+Bundle scope:
+1. Scene + observe baseline: B1-B6, D1-D5, D7
+2. Transition clarity polish: D6
+3. Loop reliability coverage: F1
+
+Status:
+1. Completed
+
+#### FB2. Character-Scoped Interrogation Threads
+Customer outcome:
+1. Players see focused, per-character interrogations while case/system actions stay in a separate thread.
+
+Bundle scope:
+1. Backend thread projections and immutability: B7, B8, B9
+2. Interrogation thread UX + switching: D8, D9, D10
+3. Thread isolation regression coverage: F7, F8
+
+Status:
+1. Completed
+
+#### FB3. Evidence-Aware Watson Guidance
+Customer outcome:
+1. Watson guidance reflects observed hotspots and missing evidence links without direct reveals.
+
+Bundle scope:
+1. Investigation gating + prompt context: C1, C2
+2. Watson request and prompt shaping: C3, C4
+3. Guardrail coverage + prompt rule updates: C5, C6
+
+Status:
+1. Not started
+2. Next feature to implement
+
+#### FB4. Visual Grounding for MVP Case Fairness
+Customer outcome:
+1. The primary MVP case has complete, fair, truth-bound hotspot coverage for required clue paths.
+
+Bundle scope:
+1. Athens hotspot authoring + marina camera chain: E1, E2
+2. Constructor + verifier + judge pipeline: E3, E4, E5, E6
+3. End-to-end scenario and judge loop checks: F4, F6
+
+Status:
+1. Not started
+
+#### FB5. Mobile-First Touch UX + Accessibility
+Customer outcome:
+1. Core gameplay remains fully usable without hover, with safe mobile interactions and accessibility fallbacks.
+
+Bundle scope:
+1. Mobile interaction and motion tasks in Section 18.6: D8-D12 (Section 18 numbering)
+2. Mobile/accessibility verification in Section 18.6: F7-F9 (Section 18 numbering)
+
+Status:
+1. Not started
+
+#### FB6. Trust, Consistency, and Regression Safety
+Customer outcome:
+1. Players get consistent canon, isolated case data, and stable core flows across languages and sessions.
+
+Bundle scope:
+1. Hotspot binding invariants: A2
+2. Case isolation and modal regression checks: F2, F3
+3. Bilingual consistency checks: F5
+
+Status:
+1. Not started
+
 ## Phase A - Contracts and Safety Gates
-- [ ] A1. Add scene/hotspot schema comments and normalization helpers in `/Users/markostsirekas/codex/murder_mystery/server/story.js`.
+- [x] A1. Add scene/hotspot schema comments and normalization helpers in `/Users/markostsirekas/codex/murder_mystery/server/story.js`.
 - [ ] A2. Add invariant validator `validateHotspotBindings(state)` in `/Users/markostsirekas/codex/murder_mystery/server/story.js`.
-- [ ] A3. Extend `createStateFromCase` expectations and sample case entries in `/Users/markostsirekas/codex/murder_mystery/server/cases.js`.
-- [ ] A4. Add serialization support for observation state in `/Users/markostsirekas/codex/murder_mystery/server/state.js` (`buildStateFromClient` + `extractClientState`).
-- [ ] A5. Add localization fields support for scene/hotspot labels in `/Users/markostsirekas/codex/murder_mystery/server/i18n.js`.
+- [x] A3. Extend `createStateFromCase` expectations and sample case entries in `/Users/markostsirekas/codex/murder_mystery/server/cases.js`.
+- [x] A4. Add serialization support for observation state in `/Users/markostsirekas/codex/murder_mystery/server/state.js` (`buildStateFromClient` + `extractClientState`).
+- [x] A5. Add localization fields support for scene/hotspot labels in `/Users/markostsirekas/codex/murder_mystery/server/i18n.js`.
 
 Dependencies:
 1. A1 before A2.
@@ -284,17 +398,22 @@ Dependencies:
 3. A5 required before frontend rendering.
 
 ## Phase B - Backend Actions and APIs
-- [ ] B1. Implement `runObserveAction` in `/Users/markostsirekas/codex/murder_mystery/server/logic.js` (or new `/Users/markostsirekas/codex/murder_mystery/server/observation.js`).
-- [ ] B2. Return `current_scene` and transition metadata from `runLocationAction`.
-- [ ] B3. Add `POST /api/observe` in `/Users/markostsirekas/codex/murder_mystery/api/observe.js`.
-- [ ] B4. Register route in `/Users/markostsirekas/codex/murder_mystery/server/index.js` if needed for local express parity.
-- [ ] B5. Update `/Users/markostsirekas/codex/murder_mystery/api/state.js` and `/Users/markostsirekas/codex/murder_mystery/api/action.js` response shape.
-- [ ] B6. Add bounded dedupe rules for repeated observation events.
+- [x] B1. Implement `runObserveAction` in `/Users/markostsirekas/codex/murder_mystery/server/logic.js` (or new `/Users/markostsirekas/codex/murder_mystery/server/observation.js`).
+- [x] B2. Return `current_scene` and transition metadata from `runLocationAction`.
+- [x] B3. Add `POST /api/observe` in `/Users/markostsirekas/codex/murder_mystery/api/observe.js`.
+- [x] B4. Register route in `/Users/markostsirekas/codex/murder_mystery/server/index.js` if needed for local express parity.
+- [x] B5. Update `/Users/markostsirekas/codex/murder_mystery/api/state.js` and `/Users/markostsirekas/codex/murder_mystery/api/action.js` response shape.
+- [x] B6. Add bounded dedupe rules for repeated observation events.
+- [ ] B7. Introduce thread projection utilities in `/Users/markostsirekas/codex/murder_mystery/server/state.js` for case thread + per-character thread views.
+- [ ] B8. Update `/Users/markostsirekas/codex/murder_mystery/server/index.js` and serverless API handlers to return `chat_threads` and `thread_delta` payloads.
+- [ ] B9. Keep canonical `events[]` immutable while deriving thread views without data loss.
 
 Dependencies:
 1. B1 before B3.
 2. B2 before frontend scene transition UI.
 3. B5 depends on A4.
+4. B7 before B8.
+5. B9 depends on B7.
 
 ## Phase C - Investigation and Watson Integration
 - [ ] C1. Add `required_hotspot_ids` support to clue step availability checks in `/Users/markostsirekas/codex/murder_mystery/server/investigation.js`.
@@ -314,18 +433,24 @@ Dependencies:
 4. C6 depends on FR-6 truth integrity contract definitions.
 
 ## Phase D - Frontend UX Delivery
-- [ ] D1. Add scene viewer container and observation list markup in `/Users/markostsirekas/codex/murder_mystery/public/index.html`.
-- [ ] D2. Add hotspot and scene styles in `/Users/markostsirekas/codex/murder_mystery/public/styles.css`.
-- [ ] D3. Add render pipeline for `current_scene` in `/Users/markostsirekas/codex/murder_mystery/public/app.js`.
-- [ ] D4. Implement hotspot click -> `/api/observe` -> UI updates in `/Users/markostsirekas/codex/murder_mystery/public/app.js`.
-- [ ] D5. Add prompt insertion chips from suggested prompts in `/Users/markostsirekas/codex/murder_mystery/public/app.js`.
-- [ ] D6. Ensure transition overlay shows on move and clears on scene ready.
-- [ ] D7. Add i18n keys in `/Users/markostsirekas/codex/murder_mystery/public/i18n.js`.
+- [x] D1. Add scene viewer container and observation list markup in `/Users/markostsirekas/codex/murder_mystery/public/index.html`.
+- [x] D2. Add hotspot and scene styles in `/Users/markostsirekas/codex/murder_mystery/public/styles.css`.
+- [x] D3. Add render pipeline for `current_scene` in `/Users/markostsirekas/codex/murder_mystery/public/app.js`.
+- [x] D4. Implement hotspot click -> `/api/observe` -> UI updates in `/Users/markostsirekas/codex/murder_mystery/public/app.js`.
+- [x] D5. Add prompt insertion chips from suggested prompts in `/Users/markostsirekas/codex/murder_mystery/public/app.js`.
+- [x] D6. Ensure transition overlay shows on move and clears on scene ready.
+- [x] D7. Add i18n keys in `/Users/markostsirekas/codex/murder_mystery/public/i18n.js`.
+- [ ] D8. Refactor interrogation renderer in `/Users/markostsirekas/codex/murder_mystery/public/app.js` to show only active character thread in Interrogation mode.
+- [ ] D9. Add thread switch behavior on character card selection (preserve scroll/position per thread).
+- [ ] D10. Add Case/System thread toggle for movement/observation logs.
 
 Dependencies:
 1. D3 depends on B2/B5.
 2. D4 depends on B3.
 3. D7 required before QA signoff in EL.
+4. D8 depends on B8.
+5. D9 depends on D8.
+6. D10 depends on B8.
 
 ## Phase E - Case Content + Constructor + Judge
 - [ ] E1. Author hotspot contracts for each location in `athens-2012-kidnapping` inside `/Users/markostsirekas/codex/murder_mystery/server/cases.js`.
@@ -341,17 +466,21 @@ Dependencies:
 3. E5 before E6.
 
 ## Phase F - QA, Regression, and Launch Gate
-- [ ] F1. Add API contract smoke tests for `/api/state`, `/api/action`, `/api/observe`.
+- [x] F1. Add API contract smoke tests for `/api/state`, `/api/action`, `/api/observe`.
 - [ ] F2. Add consistency regression checks: case switch does not leak scene/case data.
 - [ ] F3. Add modal behavior checks: close button/backdrop/Escape.
 - [ ] F4. Add scenario test: observe marina camera -> suggested prompt -> unlock chain step.
 - [ ] F5. Add bilingual checks (EN/EL scene labels and prompts).
 - [ ] F6. Run story judge loop for all cases and log failures.
+- [ ] F7. Verify thread isolation: asking Character A does not appear in Character B transcript.
+- [ ] F8. Verify case/system actions appear only in case thread, not NPC threads.
 
 Dependencies:
 1. F1 requires B complete.
 2. F4 requires D + E complete.
 3. F6 requires E5/E6 complete.
+4. F7 depends on B8 + D8.
+5. F8 depends on D10.
 
 ## 13. Task Dependency Graph (High Level)
 1. A -> B -> D -> F
@@ -366,6 +495,7 @@ Dependencies:
 4. Watson gives evidence-aware hints tied to missing observation paths.
 5. No truth-ledger contradictions introduced by scene text/hotspot outputs.
 6. Case switching preserves strict data isolation across all scene and intro content.
+7. Interrogation transcript is isolated per NPC and usable on mobile.
 
 ## 15. Telemetry and Success Metrics (MVP)
 1. `% sessions with >=1 observation action`.
@@ -373,6 +503,8 @@ Dependencies:
 3. `time_to_first_observation`.
 4. `solve rate with cross-modal evidence path`.
 5. `hint dependency rate` before and after observation usage.
+6. `% sessions with >=2 character-thread switches`.
+7. `% of turns where player remains in character-scoped thread vs global thread`.
 
 ## 16. Risks and Mitigations
 1. Risk: visual assets lag engineering.
@@ -391,6 +523,7 @@ Dependencies:
 2. Slice 2: B1-B3, D4-D5 (observation loop end-to-end).
 3. Slice 3: C1-C4 (Watson + clue-chain integration).
 4. Slice 4: E1-E6 and F1-F6 (content hardening and quality gates).
+5. Slice 5: B7-B9, D8-D10, F7-F8 (character-scoped transcript delivery).
 
 ## 18. Mobile-First UI Feature Spec
 
@@ -488,3 +621,47 @@ Add to Phase F:
 3. No mandatory desktop-only affordance (hover/double-click/right-click).
 4. Visual overlays remain strictly truth-ledger bound.
 5. Motion effects never block interaction and degrade gracefully under reduced-motion settings.
+
+## 19. Visualization Strategy (Now / Next / Later)
+
+### 19.1 Principle
+The user must visualize scenes as part of investigation, not only click abstract location pins. Pins/hotspots are overlays on scene visuals, not a substitute for visualization.
+
+### 19.2 MVP (Now)
+1. Deterministic, case-authored location scene visuals (static image or designed fallback scene card).
+2. Hotspots anchored on actual scene composition.
+3. Observation cards with source-linked prompts.
+4. No runtime generative video in MVP.
+
+### 19.3 Near-Term (Next)
+1. Offline/authoring-time generated scene stills:
+   - generated before shipping (not during player turn)
+   - saved as versioned assets under `public/images/...`
+2. Controlled generation inputs:
+   - location bible + object list + truth-ledger bindings
+   - fixed seed per case/location/version
+3. Human review gate before assets are publishable.
+
+### 19.4 Later (Post-MVP)
+1. Short pre-rendered transition loops or intro clips per location/case.
+2. Optional generated motion content only if:
+   - deterministic input recipe
+   - canonical object continuity checks pass
+   - no truth drift is introduced
+3. Keep runtime model output advisory only, never canonical without validation.
+
+### 19.5 Engineering Implications
+1. Add scene asset manifest and versioning:
+   - `scene.asset_id`
+   - `scene.asset_path`
+   - `scene.asset_version`
+2. Add asset QA script to verify:
+   - required objects visible
+   - hotspot anchors valid
+   - asset paths exist
+3. Add story-judge check for visual grounding completeness.
+
+### 19.6 Decision Record
+1. Current approved direction: scene-first visualization with hotspot overlays and prompt bridging.
+2. Runtime generative image/video is not required for MVP completion.
+3. If later adopting runtime generation, truth-ledger binding + deterministic consistency checks are mandatory.

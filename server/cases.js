@@ -505,7 +505,52 @@ const CASE_LIBRARY = [
             "Lot by Gate 2 facing the fuel dock.",
             "Πάρκινγκ δίπλα στην Πύλη 2, απέναντι από την προβλήτα καυσίμων."
           ),
-          hint: loc("Main entrance CCTV faces the exit lane.", "Η κύρια κάμερα κοιτά την έξοδο.")
+          hint: loc("Main entrance CCTV faces the exit lane.", "Η κύρια κάμερα κοιτά την έξοδο."),
+          scene: {
+            asset_id: "athens-marina-lot",
+            asset_path: "",
+            asset_version: "1",
+            hotspots: [
+              {
+                id: "lot-gate-camera",
+                label: loc("Gate 2 camera", "Κάμερα Πύλης 2"),
+                anchor: { x: 18, y: 24, radius: 18 },
+                object_type: "camera",
+                observation_note: loc(
+                  "Gate 2 camera has a clear lane-C view around 19:40.",
+                  "Η κάμερα της Πύλης 2 βλέπει καθαρά τη λωρίδα C γύρω στις 19:40."
+                ),
+                suggested_questions: [
+                  loc(
+                    "Who can provide the Gate 2 camera clip for 19:35-19:45?",
+                    "Ποιος μπορεί να δώσει το βίντεο της Πύλης 2 για 19:35-19:45;"
+                  )
+                ],
+                reveal_fact_ids: ["F_CAM_1940_VAN", "F_OCCLUSION_WINDOW_GATE2"],
+                unlock_step_ids: ["camera_evidence"],
+                repeatable: false
+              },
+              {
+                id: "lot-lane-c-marker",
+                label: loc("Lane C marker", "Σήμανση λωρίδας C"),
+                anchor: { x: 70, y: 68, radius: 18 },
+                object_type: "lane",
+                observation_note: loc(
+                  "Lane C geometry supports the van-tail narrative.",
+                  "Η γεωμετρία της λωρίδας C στηρίζει το σενάριο παρακολούθησης με βαν."
+                ),
+                suggested_questions: [
+                  loc(
+                    "Ask Tasos where he entered lane C before the exit.",
+                    "Ρώτα τον Tasos από πού μπήκε στη λωρίδα C πριν την έξοδο."
+                  )
+                ],
+                reveal_fact_ids: ["F_LANE_GEOMETRY_C"],
+                unlock_step_ids: ["camera_evidence"],
+                repeatable: false
+              }
+            ]
+          }
         },
         {
           id: "glyfada-marina-office",
@@ -514,7 +559,33 @@ const CASE_LIBRARY = [
             "Admin office above Gate 1.",
             "Διοικητικό γραφείο πάνω από την Πύλη 1."
           ),
-          hint: loc("Access logs are stored here.", "Τα αρχεία εισόδου φυλάσσονται εδώ.")
+          hint: loc("Access logs are stored here.", "Τα αρχεία εισόδου φυλάσσονται εδώ."),
+          scene: {
+            asset_id: "athens-marina-office",
+            asset_path: "",
+            asset_version: "1",
+            hotspots: [
+              {
+                id: "office-log-terminal",
+                label: loc("Access log terminal", "Τερματικό αρχείων εισόδου"),
+                anchor: { x: 60, y: 34, radius: 18 },
+                object_type: "terminal",
+                observation_note: loc(
+                  "Log terminal keeps timestamped gate entries and edits.",
+                  "Το τερματικό κρατά χρονικές εγγραφές εισόδου και αλλαγών."
+                ),
+                suggested_questions: [
+                  loc(
+                    "Who edited the marina registry near 19:40?",
+                    "Ποιος άλλαξε το μητρώο της μαρίνας κοντά στις 19:40;"
+                  )
+                ],
+                reveal_fact_ids: ["F_PLATE_ALIAS", "F_REGISTRY_EDIT_WINDOW"],
+                unlock_step_ids: ["plate_check"],
+                repeatable: false
+              }
+            ]
+          }
         },
         {
           id: "alkyon-cafe",
@@ -523,7 +594,33 @@ const CASE_LIBRARY = [
             "Victim's last stop on the promenade.",
             "Το τελευταίο σημείο του θύματος στον πεζόδρομο."
           ),
-          hint: loc("Staff keep a handwritten reservations log.", "Το προσωπικό κρατά χειρόγραφο βιβλίο κρατήσεων.")
+          hint: loc("Staff keep a handwritten reservations log.", "Το προσωπικό κρατά χειρόγραφο βιβλίο κρατήσεων."),
+          scene: {
+            asset_id: "athens-alkyon-cafe",
+            asset_path: "",
+            asset_version: "1",
+            hotspots: [
+              {
+                id: "cafe-reservations-book",
+                label: loc("Reservations book", "Βιβλίο κρατήσεων"),
+                anchor: { x: 44, y: 58, radius: 18 },
+                object_type: "logbook",
+                observation_note: loc(
+                  "Handwritten reservations can verify who met Nikos before departure.",
+                  "Οι χειρόγραφες κρατήσεις δείχνουν ποιος συνάντησε τον Νίκο πριν φύγει."
+                ),
+                suggested_questions: [
+                  loc(
+                    "Ask cafe staff who met Nikos around 19:10-19:20.",
+                    "Ρώτα το προσωπικό ποιος συνάντησε τον Νίκο γύρω στις 19:10-19:20."
+                  )
+                ],
+                reveal_fact_ids: [],
+                unlock_step_ids: [],
+                repeatable: false
+              }
+            ]
+          }
         },
         {
           id: "asteri-villa",
@@ -532,7 +629,33 @@ const CASE_LIBRARY = [
             "Hillside residence with a family office.",
             "Έπαυλη στην πλαγιά με οικογενειακό γραφείο."
           ),
-          hint: loc("Private line phones are in the study.", "Τα ιδιωτικά τηλέφωνα είναι στο γραφείο.")
+          hint: loc("Private line phones are in the study.", "Τα ιδιωτικά τηλέφωνα είναι στο γραφείο."),
+          scene: {
+            asset_id: "athens-asteri-villa",
+            asset_path: "",
+            asset_version: "1",
+            hotspots: [
+              {
+                id: "villa-study-phone",
+                label: loc("Private line phone", "Ιδιωτική τηλεφωνική γραμμή"),
+                anchor: { x: 66, y: 42, radius: 18 },
+                object_type: "phone",
+                observation_note: loc(
+                  "Study line records align with late-stage order calls.",
+                  "Οι καταγραφές της γραμμής στο γραφείο ταιριάζουν με τις κλήσεις εντολών."
+                ),
+                suggested_questions: [
+                  loc(
+                    "Ask Spiros to explain the study line calls near 19:35-19:45.",
+                    "Ρώτα τον Spiros να εξηγήσει τις κλήσεις της γραμμής γύρω στις 19:35-19:45."
+                  )
+                ],
+                reveal_fact_ids: ["F_SPIROS_ORDER"],
+                unlock_step_ids: ["killer_link"],
+                repeatable: false
+              }
+            ]
+          }
         },
         {
           id: "voss-warehouse",
@@ -541,7 +664,33 @@ const CASE_LIBRARY = [
             "Light industrial unit near the ring road.",
             "Βιομηχανική μονάδα κοντά στην περιφερειακή."
           ),
-          hint: loc("Loading bay cameras cover the rear door.", "Οι κάμερες καλύπτουν την πίσω πόρτα.")
+          hint: loc("Loading bay cameras cover the rear door.", "Οι κάμερες καλύπτουν την πίσω πόρτα."),
+          scene: {
+            asset_id: "athens-voss-warehouse",
+            asset_path: "",
+            asset_version: "1",
+            hotspots: [
+              {
+                id: "warehouse-loading-bay-cam",
+                label: loc("Loading bay camera", "Κάμερα ράμπας φόρτωσης"),
+                anchor: { x: 24, y: 36, radius: 18 },
+                object_type: "camera",
+                observation_note: loc(
+                  "Loading bay footage covers the rear-door movement corridor.",
+                  "Το υλικό της ράμπας καλύπτει τον διάδρομο κίνησης της πίσω πόρτας."
+                ),
+                suggested_questions: [
+                  loc(
+                    "Who accessed the rear door during the warehouse window?",
+                    "Ποιος πέρασε από την πίσω πόρτα στο κρίσιμο παράθυρο;"
+                  )
+                ],
+                reveal_fact_ids: ["F_WAREHOUSE_LOG", "F_REAR_DOOR_SHADOW"],
+                unlock_step_ids: ["warehouse_link"],
+                repeatable: false
+              }
+            ]
+          }
         },
         {
           id: "seaside-drop",
@@ -550,7 +699,33 @@ const CASE_LIBRARY = [
             "Blind bend on the coastal road.",
             "Στροφή χωρίς ορατότητα στην παραλιακή."
           ),
-          hint: loc("Phone signal is weak on the curve.", "Το σήμα τηλεφώνου είναι χαμηλό στη στροφή.")
+          hint: loc("Phone signal is weak on the curve.", "Το σήμα τηλεφώνου είναι χαμηλό στη στροφή."),
+          scene: {
+            asset_id: "athens-seaside-drop",
+            asset_path: "",
+            asset_version: "1",
+            hotspots: [
+              {
+                id: "drop-signal-pocket",
+                label: loc("Signal pocket", "Ζώνη σήματος"),
+                anchor: { x: 54, y: 28, radius: 18 },
+                object_type: "signal",
+                observation_note: loc(
+                  "Weak signal pocket supports staggered call timing.",
+                  "Η ζώνη χαμηλού σήματος εξηγεί τις διακεκομμένες ώρες κλήσεων."
+                ),
+                suggested_questions: [
+                  loc(
+                    "Ask Elena how she handled calls in the drop-signal dead zone.",
+                    "Ρώτα την Elena πώς διαχειρίστηκε κλήσεις στη νεκρή ζώνη."
+                  )
+                ],
+                reveal_fact_ids: [],
+                unlock_step_ids: [],
+                repeatable: false
+              }
+            ]
+          }
         },
         {
           id: "marina-kiosk",
@@ -559,7 +734,33 @@ const CASE_LIBRARY = [
             "Small coffee stand by the lot entrance.",
             "Μικρή καντίνα στην είσοδο του πάρκινγκ."
           ),
-          hint: loc("Regulars recognize frequent faces.", "Οι θαμώνες αναγνωρίζουν τους συχνούς πελάτες.")
+          hint: loc("Regulars recognize frequent faces.", "Οι θαμώνες αναγνωρίζουν τους συχνούς πελάτες."),
+          scene: {
+            asset_id: "athens-marina-kiosk",
+            asset_path: "",
+            asset_version: "1",
+            hotspots: [
+              {
+                id: "kiosk-regulars-view",
+                label: loc("Regulars line of sight", "Οπτικό πεδίο θαμώνων"),
+                anchor: { x: 42, y: 62, radius: 18 },
+                object_type: "witness-angle",
+                observation_note: loc(
+                  "Regulars at the kiosk can corroborate recurring marina faces.",
+                  "Οι θαμώνες της καντίνας μπορούν να επιβεβαιώσουν επαναλαμβανόμενα πρόσωπα."
+                ),
+                suggested_questions: [
+                  loc(
+                    "Ask Yannis who was repeatedly seen near the lot before 19:40.",
+                    "Ρώτα τον Yannis ποιος φαινόταν συχνά κοντά στο πάρκινγκ πριν τις 19:40."
+                  )
+                ],
+                reveal_fact_ids: [],
+                unlock_step_ids: ["camera_evidence"],
+                repeatable: false
+              }
+            ]
+          }
         },
         {
           id: "markos-clinic",
@@ -568,7 +769,33 @@ const CASE_LIBRARY = [
             "Private clinic in Glyfada.",
             "Ιδιωτική κλινική στη Γλυφάδα."
           ),
-          hint: loc("Appointment logs show visitor times.", "Τα ραντεβού δείχνουν ώρες επίσκεψης.")
+          hint: loc("Appointment logs show visitor times.", "Τα ραντεβού δείχνουν ώρες επίσκεψης."),
+          scene: {
+            asset_id: "athens-markos-clinic",
+            asset_path: "",
+            asset_version: "1",
+            hotspots: [
+              {
+                id: "clinic-appointment-log",
+                label: loc("Appointment ledger", "Βιβλίο ραντεβού"),
+                anchor: { x: 52, y: 48, radius: 18 },
+                object_type: "logbook",
+                observation_note: loc(
+                  "Clinic appointment times provide independent alibi checks.",
+                  "Οι ώρες ραντεβού της κλινικής προσφέρουν ανεξάρτητο έλεγχο άλλοθι."
+                ),
+                suggested_questions: [
+                  loc(
+                    "Ask Dr. Elena to align her timeline with clinic logs.",
+                    "Ρώτα την Δρ. Elena να ευθυγραμμίσει τη γραμμή χρόνου της με τα ραντεβού."
+                  )
+                ],
+                reveal_fact_ids: [],
+                unlock_step_ids: [],
+                repeatable: false
+              }
+            ]
+          }
         }
       ],
       relationship_history: [

@@ -124,6 +124,104 @@ function normalizeLocationIds(value) {
   return unique((Array.isArray(value) ? value : []).map((entry) => String(entry || "").trim()));
 }
 
+function normalizeObservedHotspotIds(value) {
+  return unique((Array.isArray(value) ? value : []).map((entry) => String(entry || "").trim()));
+}
+
+function normalizeObservationEvents(value) {
+  const list = Array.isArray(value) ? value : [];
+  return list
+    .filter((entry) => entry && typeof entry === "object")
+    .map((entry) => ({
+      id: String(entry.id || ""),
+      hotspot_id: String(entry.hotspot_id || ""),
+      location_id: String(entry.location_id || ""),
+      time_minutes: Number.isFinite(entry.time_minutes) ? entry.time_minutes : null,
+      note: entry.note || loc("Scene detail logged.", "Καταγράφηκε λεπτομέρεια σκηνής.")
+    }))
+    .filter((entry) => entry.hotspot_id && entry.location_id)
+    .slice(-60);
+}
+
+function ensureSceneContract(location) {
+  if (!location || typeof location !== "object") return;
+  const locationId = String(location.id || "scene");
+  const locationNameEn = getLocalized(location.name, "en") || locationId;
+  const locationNameEl = getLocalized(location.name, "el") || locationNameEn;
+  const hintEn = getLocalized(location.hint, "en") || "There is a detail worth checking.";
+  const hintEl = getLocalized(location.hint, "el") || hintEn;
+
+  if (!location.scene || typeof location.scene !== "object") {
+    location.scene = {};
+  }
+  const scene = location.scene;
+  scene.asset_id = String(scene.asset_id || `scene-${locationId}`);
+  scene.asset_path = String(scene.asset_path || "");
+  scene.asset_version = String(scene.asset_version || "1");
+
+  const rawHotspots = Array.isArray(scene.hotspots) ? scene.hotspots : [];
+  const normalizedHotspots = rawHotspots
+    .filter((entry) => entry && typeof entry === "object")
+    .map((entry, index) => {
+      const hotspotId = String(entry.id || `${locationId}-hotspot-${index + 1}`);
+      const x = Number(entry?.anchor?.x);
+      const y = Number(entry?.anchor?.y);
+      const radius = Number(entry?.anchor?.radius);
+      return {
+        id: hotspotId,
+        label: entry.label || loc("Scene detail", "Λεπτομέρεια σκηνής"),
+        anchor: {
+          x: Number.isFinite(x) ? Math.max(0, Math.min(100, x)) : 50,
+          y: Number.isFinite(y) ? Math.max(0, Math.min(100, y)) : 50,
+          radius: Number.isFinite(radius) ? Math.max(12, Math.min(40, radius)) : 18
+        },
+        object_type: String(entry.object_type || "scene_detail"),
+        observation_note: entry.observation_note || loc(
+          `${locationNameEn}: ${hintEn}`,
+          `${locationNameEl}: ${hintEl}`
+        ),
+        suggested_questions: Array.isArray(entry.suggested_questions)
+          ? entry.suggested_questions
+          : [loc(
+              `Who can verify this detail at ${locationNameEn}?`,
+              `Ποιος μπορεί να επιβεβαιώσει αυτή τη λεπτομέρεια στο ${locationNameEl};`
+            )],
+        reveal_fact_ids: normalizeLocationIds(entry.reveal_fact_ids),
+        unlock_step_ids: normalizeLocationIds(entry.unlock_step_ids),
+        repeatable: Boolean(entry.repeatable)
+      };
+    });
+
+  if (!normalizedHotspots.length) {
+    normalizedHotspots.push({
+      id: `${locationId}-primary-observation`,
+      label: loc("Scene detail", "Λεπτομέρεια σκηνής"),
+      anchor: { x: 50, y: 50, radius: 18 },
+      object_type: "scene_detail",
+      observation_note: loc(
+        `${locationNameEn}: ${hintEn}`,
+        `${locationNameEl}: ${hintEl}`
+      ),
+      suggested_questions: [
+        loc(
+          `Who can verify this detail at ${locationNameEn}?`,
+          `Ποιος μπορεί να επιβεβαιώσει αυτή τη λεπτομέρεια στο ${locationNameEl};`
+        )
+      ],
+      reveal_fact_ids: [],
+      unlock_step_ids: [],
+      repeatable: false
+    });
+  }
+
+  scene.hotspots = normalizedHotspots;
+}
+
+function ensureSceneContracts(publicState) {
+  const locations = Array.isArray(publicState?.case_locations) ? publicState.case_locations : [];
+  locations.forEach((location) => ensureSceneContract(location));
+}
+
 // Ensures every character has a normalized presence block.
 function ensurePresence(character) {
   const current = character?.presence && typeof character.presence === "object" ? character.presence : {};
@@ -148,6 +246,7 @@ function normalizeCurrentLocation(publicState) {
 // Keeps location navigation fields coherent and initialized for gameplay.
 function ensureLocationState(publicState) {
   if (!publicState) return;
+  ensureSceneContracts(publicState);
   const currentId = normalizeCurrentLocation(publicState);
   publicState.current_location_id = currentId;
 
@@ -157,6 +256,8 @@ function ensureLocationState(publicState) {
 
   publicState.location_intel_ids = normalizeLocationIds(publicState.location_intel_ids);
   publicState.introduced_character_ids = normalizeLocationIds(publicState.introduced_character_ids);
+  publicState.observed_hotspot_ids = normalizeObservedHotspotIds(publicState.observed_hotspot_ids);
+  publicState.observation_events = normalizeObservationEvents(publicState.observation_events);
 }
 
 // Derives a practical contact role label from location naming hints.

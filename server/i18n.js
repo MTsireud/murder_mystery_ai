@@ -66,9 +66,46 @@ export function localizeList(list, lang) {
 
 export function localizePublicState(publicState, lang) {
   if (!publicState) return null;
-  const caseLocations = Array.isArray(publicState.case_locations)
+  const caseLocationsRaw = Array.isArray(publicState.case_locations)
     ? publicState.case_locations
     : [];
+  const observedHotspotIds = Array.isArray(publicState.observed_hotspot_ids)
+    ? publicState.observed_hotspot_ids.filter(Boolean)
+    : [];
+  const observedSet = new Set(observedHotspotIds);
+  const caseLocations = caseLocationsRaw.map((loc) => {
+    const scene = loc?.scene && typeof loc.scene === "object" ? loc.scene : {};
+    const hotspots = Array.isArray(scene.hotspots) ? scene.hotspots : [];
+    return {
+      id: loc.id,
+      name: getLocalized(loc.name, lang),
+      descriptor: getLocalized(loc.descriptor, lang),
+      hint: getLocalized(loc.hint, lang),
+      scene: {
+        asset_id: String(scene.asset_id || ""),
+        asset_path: String(scene.asset_path || ""),
+        asset_version: String(scene.asset_version || ""),
+        hotspots: hotspots
+          .filter((entry) => entry && entry.id)
+          .map((entry) => ({
+            id: String(entry.id),
+            label: getLocalized(entry.label, lang),
+            anchor: {
+              x: Number.isFinite(entry?.anchor?.x) ? entry.anchor.x : 50,
+              y: Number.isFinite(entry?.anchor?.y) ? entry.anchor.y : 50,
+              radius: Number.isFinite(entry?.anchor?.radius) ? entry.anchor.radius : 18
+            },
+            object_type: String(entry.object_type || "scene_detail"),
+            observation_note: getLocalized(entry.observation_note, lang),
+            suggested_questions: localizeList(entry.suggested_questions, lang),
+            reveal_fact_ids: Array.isArray(entry.reveal_fact_ids) ? entry.reveal_fact_ids.filter(Boolean) : [],
+            unlock_step_ids: Array.isArray(entry.unlock_step_ids) ? entry.unlock_step_ids.filter(Boolean) : [],
+            repeatable: Boolean(entry.repeatable),
+            observed: observedSet.has(String(entry.id))
+          }))
+      }
+    };
+  });
   const currentLocationId = typeof publicState.current_location_id === "string"
     ? publicState.current_location_id
     : "";
@@ -97,14 +134,10 @@ export function localizePublicState(publicState, lang) {
           relationship_summary: getLocalized(publicState.victim_dossier.relationship_summary, lang)
         }
       : null,
-    case_locations: caseLocations.map((loc) => ({
-      id: loc.id,
-      name: getLocalized(loc.name, lang),
-      descriptor: getLocalized(loc.descriptor, lang),
-      hint: getLocalized(loc.hint, lang)
-    })),
+    case_locations: caseLocations,
     current_location_id: currentLocationId,
     current_location_name: currentLocationEntry ? getLocalized(currentLocationEntry.name, lang) : "",
+    current_scene: currentLocationEntry?.scene || null,
     visited_location_ids: Array.isArray(publicState.visited_location_ids)
       ? publicState.visited_location_ids.filter(Boolean)
       : [],
@@ -113,6 +146,21 @@ export function localizePublicState(publicState, lang) {
       : [],
     introduced_character_ids: Array.isArray(publicState.introduced_character_ids)
       ? publicState.introduced_character_ids.filter(Boolean)
+      : [],
+    observed_hotspot_ids: observedHotspotIds,
+    observation_events: Array.isArray(publicState.observation_events)
+      ? publicState.observation_events
+          .filter((entry) => entry && typeof entry === "object")
+          .map((entry) => ({
+            id: String(entry.id || ""),
+            hotspot_id: String(entry.hotspot_id || ""),
+            location_id: String(entry.location_id || ""),
+            time_minutes: Number.isFinite(entry.time_minutes) ? entry.time_minutes : null,
+            note: getLocalized(entry.note, lang) || "",
+            label: getLocalized(entry.label, lang) || "",
+            suggested_questions: localizeList(entry.suggested_questions, lang)
+          }))
+          .filter((entry) => entry.hotspot_id && entry.location_id)
       : [],
     relationship_history: relationshipHistory.map((entry) => ({
       id: entry.id,
