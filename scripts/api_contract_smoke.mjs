@@ -111,10 +111,49 @@ async function main() {
   assert.ok(Array.isArray(observeData.evidence_delta), "observe.evidence_delta must be an array");
   assert.ok(Array.isArray(observeData.suggested_prompts), "observe.suggested_prompts must be an array");
 
+  const solveResult = await postJson("/api/solve", {
+    sessionId: stateData.sessionId,
+    caseId: CASE_ID,
+    language: LANGUAGE,
+    reveal: false,
+    solution: {
+      full_text: "I think Rowan attacked Edmund at the stage door and the missing pass plus timeline support it."
+    },
+    client_state: observeData.client_state
+  });
+  assert.equal(solveResult.res.status, 200, "POST /api/solve (submit) should return 200");
+  const solveData = solveResult.data;
+  assertObject(solveData.result, "solve.result must be an object");
+  assert.ok(typeof solveData.result.verdict === "string", "solve.result.verdict must be a string");
+  assert.ok(hasOwn(solveData.result, "checks"), "solve.result must include checks");
+  assert.ok(hasOwn(solveData.result, "reveal_requested"), "solve.result must include reveal_requested");
+  assert.ok(hasOwn(solveData.result, "reveal"), "solve.result must include reveal payload");
+
+  const revealResult = await postJson("/api/solve", {
+    sessionId: stateData.sessionId,
+    caseId: CASE_ID,
+    language: LANGUAGE,
+    reveal: true,
+    solution: {
+      full_text: ""
+    },
+    client_state: solveData.client_state
+  });
+  assert.equal(revealResult.res.status, 200, "POST /api/solve (reveal) should return 200");
+  const revealData = revealResult.data;
+  assertObject(revealData.result, "reveal.result must be an object");
+  assert.equal(revealData.result.reveal_requested, true, "reveal.result.reveal_requested must be true");
+  assertObject(revealData.result.reveal, "reveal.result.reveal must be an object");
+  assert.ok(typeof revealData.result.reveal.killer_name === "string", "reveal.killer_name must be a string");
+  assert.ok(typeof revealData.result.reveal.method === "string", "reveal.method must be a string");
+  assert.ok(Array.isArray(revealData.result.reveal.timeline), "reveal.timeline must be an array");
+
   console.log("API smoke checks passed:");
   console.log("- POST /api/state contract");
   console.log("- POST /api/action contract");
   console.log("- POST /api/observe contract");
+  console.log("- POST /api/solve submit contract");
+  console.log("- POST /api/solve reveal contract");
 }
 
 main().catch((error) => {

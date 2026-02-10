@@ -234,7 +234,12 @@ function buildDeterministicResult({ state, solution, revealRequested, language }
 
   const killerCharacter = characters.find((character) => String(character?.id || "") === String(truth?.killer_id || ""));
   const killerName = killerCharacter?.name || String(truth?.killer_id || "");
-  const killerMatch = killerName ? includesText(narrative, killerName) : false;
+  const killerAliases = uniqueStrings([
+    String(truth?.killer_id || ""),
+    killerName,
+    String(killerName || "").split(/\s+/)[0]
+  ]);
+  const killerMatch = killerAliases.some((alias) => includesText(narrative, alias));
   const methodMatch = includesText(narrative, truth?.method || "");
   const motiveMatch = includesText(narrative, truth?.motive || "");
 

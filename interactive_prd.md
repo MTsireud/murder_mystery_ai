@@ -483,20 +483,20 @@ Dependencies:
 - [ ] F8. Verify case/system actions appear only in case thread, not NPC threads.
 
 ## Phase G - Case Resolution Repair (Execution 2026-02-10)
-- [ ] G1. Simplify case resolution form in `/Users/markostsirekas/codex/murder_mystery/public/index.html` to a single open-text theory field with evidence-oriented placeholder guidance.
-- [ ] G2. Refactor case resolution submit/reveal handlers in `/Users/markostsirekas/codex/murder_mystery/public/app.js` to support explicit actions:
+- [x] G1. Simplify case resolution form in `/Users/markostsirekas/codex/murder_mystery/public/index.html` to a single open-text theory field with evidence-oriented placeholder guidance.
+- [x] G2. Refactor case resolution submit/reveal handlers in `/Users/markostsirekas/codex/murder_mystery/public/app.js` to support explicit actions:
   - `Submit theory`
   - `Show solution (lose)`
-- [ ] G3. Improve solution panel usability and readability in `/Users/markostsirekas/codex/murder_mystery/public/styles.css` for desktop and mobile.
-- [ ] G4. Extend solution copy keys in `/Users/markostsirekas/codex/murder_mystery/public/i18n.js` for the new open-text flow.
-- [ ] G5. Update checker prompt contract in `/Users/markostsirekas/codex/murder_mystery/agents/checker/AGENTS.md` to evaluate open-text theories against canonical truth plus truth-ledger anchors.
-- [ ] G6. Harden `/Users/markostsirekas/codex/murder_mystery/server/checker.js`:
+- [x] G3. Improve solution panel usability and readability in `/Users/markostsirekas/codex/murder_mystery/public/styles.css` for desktop and mobile.
+- [x] G4. Extend solution copy keys in `/Users/markostsirekas/codex/murder_mystery/public/i18n.js` for the new open-text flow.
+- [x] G5. Update checker prompt contract in `/Users/markostsirekas/codex/murder_mystery/agents/checker/AGENTS.md` to evaluate open-text theories against canonical truth plus truth-ledger anchors.
+- [x] G6. Harden `/Users/markostsirekas/codex/murder_mystery/server/checker.js`:
   - default checker model to low-cost `gpt-4.1-mini` unless overridden
   - include truth-ledger context in checker input
   - guarantee canonical reveal payload when reveal is requested
   - provide deterministic fallback scoring when model output is unavailable/invalid
-- [ ] G7. Extend `/Users/markostsirekas/codex/murder_mystery/scripts/api_contract_smoke.mjs` with `/api/solve` contract checks (submit + reveal paths).
-- [ ] G8. Local verification: restart local server and run smoke checks before handoff.
+- [x] G7. Extend `/Users/markostsirekas/codex/murder_mystery/scripts/api_contract_smoke.mjs` with `/api/solve` contract checks (submit + reveal paths).
+- [x] G8. Local verification: restart local server and run smoke checks before handoff.
 
 ### UI Simplification Burndown (S1)
 - [x] S1.1 Remove duplicate intro surfaces; keep a single Case Brief entry point.
