@@ -10,13 +10,9 @@ const languageSelect = document.getElementById("languageSelect");
 const caseSelect = document.getElementById("caseSelect");
 const modelModeSelect = document.getElementById("modelModeSelect");
 const modelUsedValue = document.getElementById("modelUsedValue");
-const solutionKillerInput = document.getElementById("solutionKiller");
-const solutionMethodInput = document.getElementById("solutionMethod");
-const solutionMotiveInput = document.getElementById("solutionMotive");
-const solutionTimelineInput = document.getElementById("solutionTimeline");
-const solutionCharacterNotesInput = document.getElementById("solutionCharacterNotes");
-const revealToggle = document.getElementById("revealToggle");
+const solutionNarrativeInput = document.getElementById("solutionNarrative");
 const checkSolutionBtn = document.getElementById("checkSolutionBtn");
+const revealSolutionBtn = document.getElementById("revealSolutionBtn");
 const solutionResultEl = document.getElementById("solutionResult");
 const caseHeadlineEl = document.getElementById("caseHeadline");
 const openBriefingBtn = document.getElementById("openBriefingBtn");
@@ -82,10 +78,17 @@ const observationSheetObserveBtn = document.getElementById("observationSheetObse
 const observationSheetUsePromptBtn = document.getElementById("observationSheetUsePromptBtn");
 const observationSheetJumpBtn = document.getElementById("observationSheetJumpBtn");
 const observationSheetPromptListEl = document.getElementById("observationSheetPromptList");
-const debugOverlayEnabled = window.location.search.includes("debug=1");
-if (debugOverlayEnabled) {
+const debugRouteEnabled = window.location.pathname === "/debug" || window.location.search.includes("debug=1");
+if (debugRouteEnabled) {
   localStorage.setItem("debugOverlay", "true");
+} else {
+  localStorage.removeItem("debugOverlay");
 }
+const debugModeEnabled = debugRouteEnabled || localStorage.getItem("debugOverlay") === "true";
+document.body.classList.toggle("debug-mode", debugModeEnabled);
+document.querySelectorAll("[data-debug-only]").forEach((el) => {
+  el.hidden = !debugModeEnabled;
+});
 
 const appState = {
   sessionId: null,
@@ -160,7 +163,7 @@ function shouldIgnoreCaseResponse(context, data = null) {
 let debugOverlayEl = null;
 
 function isDebugOverlayEnabled() {
-  return localStorage.getItem("debugOverlay") === "true";
+  return debugModeEnabled;
 }
 
 function ensureDebugOverlay() {
@@ -2358,6 +2361,9 @@ function applyTranslations() {
     lang,
     appState.chatMode === "watson" ? "watsonPlaceholder" : "placeholder"
   );
+  if (solutionNarrativeInput) {
+    solutionNarrativeInput.placeholder = I18N.t(lang, "solutionNarrativePlaceholder");
+  }
   renderLocationPanel();
   if (briefingModalEl && !briefingModalEl.hidden) {
     renderBriefingFolderView();
@@ -2370,6 +2376,7 @@ function applyTranslations() {
 function renderSolutionResult(result) {
   if (!result) {
     solutionResultEl.textContent = "";
+    solutionResultEl.dataset.variant = "";
     return;
   }
 
@@ -2382,6 +2389,8 @@ function renderSolutionResult(result) {
   };
   const verdictKey = verdictKeyMap[result.verdict] || "solutionVerdictInsufficient";
   lines.push(I18N.t(appState.language, verdictKey));
+  solutionResultEl.dataset.variant =
+    result.verdict === "correct" ? "correct" : result.verdict === "insufficient" ? "insufficient" : "default";
 
   if (Array.isArray(result.missing_characters) && result.missing_characters.length > 0) {
     lines.push(`${I18N.t(appState.language, "solutionMissingCharacters")}:`);
@@ -2399,6 +2408,7 @@ function renderSolutionResult(result) {
   }
 
   if (result.reveal_requested && result.reveal) {
+    solutionResultEl.dataset.variant = "reveal";
     lines.push(I18N.t(appState.language, "solutionRevealTitle"));
     lines.push(I18N.t(appState.language, "solutionRevealKiller", { name: result.reveal.killer_name }));
     lines.push(I18N.t(appState.language, "solutionRevealMethod", { method: result.reveal.method }));
@@ -2420,6 +2430,85 @@ function renderSolutionResult(result) {
   }
 
   solutionResultEl.textContent = lines.join("\n");
+}
+
+function clearSolutionComposer() {
+  if (solutionNarrativeInput) {
+    solutionNarrativeInput.value = "";
+  }
+}
+
+function setSolutionBusy(isBusy) {
+  const busy = Boolean(isBusy);
+  if (checkSolutionBtn) checkSolutionBtn.disabled = busy;
+  if (revealSolutionBtn) revealSolutionBtn.disabled = busy;
+}
+
+function buildSolutionPayload() {
+  const narrative = solutionNarrativeInput?.value?.trim() || "";
+  return {
+    killer: "",
+    method: "",
+    motive: "",
+    timeline: "",
+    character_notes: "",
+    full_text: narrative
+  };
+}
+
+async function submitSolution({ reveal }) {
+  if (!appState.caseId) return;
+  const requestContext = createCaseRequestContext();
+  const solution = buildSolutionPayload();
+  if (!reveal && !solution.full_text) {
+    solutionResultEl.dataset.variant = "insufficient";
+    solutionResultEl.textContent = I18N.t(appState.language, "solutionNeedText");
+    return;
+  }
+
+  solutionResultEl.dataset.variant = "loading";
+  solutionResultEl.textContent = I18N.t(appState.language, "solutionChecking");
+  setSolutionBusy(true);
+
+  try {
+    const res = await fetch("/api/solve", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        sessionId: appState.sessionId,
+        language: appState.language,
+        reveal: Boolean(reveal),
+        solution,
+        caseId: appState.caseId,
+        client_state: appState.clientState
+      })
+    });
+
+    const data = await res.json().catch(() => ({}));
+    if (shouldIgnoreCaseResponse(requestContext, data)) return;
+    if (!res.ok) {
+      solutionResultEl.dataset.variant = "error";
+      solutionResultEl.textContent = data.error || I18N.t(appState.language, "errorGeneric");
+      return;
+    }
+
+    renderSolutionResult(data.result);
+    const endOfGame = shouldClearOnSolve(data.result);
+    if (endOfGame) {
+      clearStoredClientState();
+      appState.clientState = null;
+    } else if (data.client_state) {
+      appState.clientState = data.client_state;
+      storeClientState(appState.clientState);
+    }
+  } catch {
+    solutionResultEl.dataset.variant = "error";
+    solutionResultEl.textContent = I18N.t(appState.language, "errorGeneric");
+  } finally {
+    setSolutionBusy(false);
+  }
 }
 
 async function loadState(sessionId) {
@@ -2774,12 +2863,7 @@ resetBtn.addEventListener("click", async () => {
   appendMessage(I18N.t(appState.language, "caseReset"), "detective");
   modelUsedValue.textContent = "-";
   renderSolutionResult(null);
-  solutionKillerInput.value = "";
-  solutionMethodInput.value = "";
-  solutionMotiveInput.value = "";
-  solutionTimelineInput.value = "";
-  solutionCharacterNotesInput.value = "";
-  revealToggle.checked = false;
+  clearSolutionComposer();
 });
 
 const storedLang = localStorage.getItem("language");
@@ -2788,14 +2872,21 @@ const browserLang = navigator.language || "en";
 syncReducedMotionPreference();
 appState.language = I18N.normalizeLanguage(storedLang || browserLang);
 appState.modelMode = storedModelMode || "auto";
-appState.skillsEnabled = localStorage.getItem("skillsEnabled") === "true";
-appState.skillsDrawerOpen = localStorage.getItem("skillsDrawerOpen") === "true";
+appState.skillsEnabled = debugModeEnabled && localStorage.getItem("skillsEnabled") === "true";
+appState.skillsDrawerOpen = debugModeEnabled && localStorage.getItem("skillsDrawerOpen") === "true";
 appState.watsonFrequency = localStorage.getItem("watsonFrequency") || "normal";
 appState.watsonStyle = localStorage.getItem("watsonStyle") || "questions";
 appState.watsonQuality = Number(localStorage.getItem("watsonQuality")) || 70;
-appState.hapticsEnabled = localStorage.getItem("hapticsEnabled") === "true";
-appState.soundEnabled = localStorage.getItem("soundEnabled") === "true";
-appState.analyzeMode = localStorage.getItem("analyzeMode") === "true";
+appState.hapticsEnabled = debugModeEnabled && localStorage.getItem("hapticsEnabled") === "true";
+appState.soundEnabled = debugModeEnabled && localStorage.getItem("soundEnabled") === "true";
+appState.analyzeMode = debugModeEnabled && localStorage.getItem("analyzeMode") === "true";
+if (!debugModeEnabled) {
+  localStorage.removeItem("skillsEnabled");
+  localStorage.removeItem("skillsDrawerOpen");
+  localStorage.removeItem("hapticsEnabled");
+  localStorage.removeItem("soundEnabled");
+  localStorage.removeItem("analyzeMode");
+}
 appState.watsonLog = loadWatsonLog();
 languageSelect.value = appState.language;
 modelModeSelect.value = appState.modelMode;
@@ -2893,67 +2984,18 @@ caseSelect.addEventListener("change", async () => {
   );
   modelUsedValue.textContent = "-";
   renderSolutionResult(null);
-  solutionKillerInput.value = "";
-  solutionMethodInput.value = "";
-  solutionMotiveInput.value = "";
-  solutionTimelineInput.value = "";
-  solutionCharacterNotesInput.value = "";
-  revealToggle.checked = false;
+  clearSolutionComposer();
 });
 
 checkSolutionBtn.addEventListener("click", async () => {
-  if (!appState.caseId) return;
-  const requestContext = createCaseRequestContext();
-  const solution = {
-    killer: solutionKillerInput.value.trim(),
-    method: solutionMethodInput.value.trim(),
-    motive: solutionMotiveInput.value.trim(),
-    timeline: solutionTimelineInput.value.trim(),
-    character_notes: solutionCharacterNotesInput.value.trim(),
-    full_text: [
-      solutionKillerInput.value.trim(),
-      solutionMethodInput.value.trim(),
-      solutionMotiveInput.value.trim(),
-      solutionTimelineInput.value.trim(),
-      solutionCharacterNotesInput.value.trim()
-    ]
-      .filter(Boolean)
-      .join("\n")
-  };
-
-  solutionResultEl.textContent = I18N.t(appState.language, "solutionChecking");
-  const res = await fetch("/api/solve", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      sessionId: appState.sessionId,
-      language: appState.language,
-      reveal: revealToggle.checked,
-      solution,
-      caseId: appState.caseId,
-      client_state: appState.clientState
-    })
-  });
-
-  const data = await res.json();
-  if (shouldIgnoreCaseResponse(requestContext, data)) return;
-  if (!res.ok) {
-    solutionResultEl.textContent = data.error || I18N.t(appState.language, "errorGeneric");
-    return;
-  }
-
-  renderSolutionResult(data.result);
-  const endOfGame = shouldClearOnSolve(data.result);
-  if (endOfGame) {
-    clearStoredClientState();
-    appState.clientState = null;
-  } else if (data.client_state) {
-    appState.clientState = data.client_state;
-    storeClientState(appState.clientState);
-  }
+  await submitSolution({ reveal: false });
 });
+
+if (revealSolutionBtn) {
+  revealSolutionBtn.addEventListener("click", async () => {
+    await submitSolution({ reveal: true });
+  });
+}
 
 modelModeSelect.addEventListener("change", () => {
   appState.modelMode = modelModeSelect.value || "auto";

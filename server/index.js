@@ -25,6 +25,9 @@ app.use(express.json());
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const publicDir = path.join(__dirname, "..", "public");
 app.use(express.static(publicDir));
+app.get("/debug", (req, res) => {
+  res.sendFile(path.join(publicDir, "index.html"));
+});
 
 app.get("/api/state", async (req, res) => {
   const session = getOrCreateSession(req.query.sessionId, req.query.caseId);
@@ -343,6 +346,7 @@ app.post("/api/storylab", async (req, res) => {
     include_config,
     max_rounds,
     auto_fix,
+    persist_backlog,
     judge_only,
     quality_bar
   } = req.body || {};
@@ -390,7 +394,8 @@ app.post("/api/storylab", async (req, res) => {
         qualityBar: quality_bar,
         maxRounds: max_rounds,
         autoFix: auto_fix !== false,
-        includeConfig: Boolean(include_config)
+        includeConfig: Boolean(include_config),
+        persistBacklog: persist_backlog !== false
       });
 
   if (result?.error) {
@@ -462,6 +467,7 @@ app.post("/api/story-loop", async (req, res) => {
     include_config,
     max_rounds,
     auto_fix,
+    persist_backlog,
     quality_bar
   } = req.body || {};
   const storyText = String(novel || story_text || "");
@@ -493,7 +499,8 @@ app.post("/api/story-loop", async (req, res) => {
     qualityBar: quality_bar,
     maxRounds: max_rounds,
     autoFix: auto_fix !== false,
-    includeConfig: Boolean(include_config)
+    includeConfig: Boolean(include_config),
+    persistBacklog: persist_backlog !== false
   });
   if (result?.error) {
     res.status(400).json({ error: result.error });

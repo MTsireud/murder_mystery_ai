@@ -1,3 +1,6 @@
+// Story Judge Service
+// Run: `npm run dev`, then call `POST /api/story-judge` or `POST /api/story-loop` with `story_text`.
+// Purpose: score pasted story text against case truth and return a quality gate verdict.
 import { createResponse, getOpenAIClient } from "./openai.js";
 import { getLocalized, normalizeLanguage } from "./i18n.js";
 import { loadPrompt } from "./prompts.js";
@@ -290,7 +293,203 @@ function normalizeQualityBar(input) {
   return result;
 }
 
-function fallbackJudgeResult(qualityBar) {
+function safeWords(input, min = 4) {
+  return String(input || "")
+    .toLowerCase()
+    .split(/[^a-z0-9\u0370-\u03ff]+/i)
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length >= min);
+}
+
+function includesAny(text, candidates) {
+  const hay = String(text || "").toLowerCase();
+  return ensureArray(candidates)
+    .map((entry) => String(entry || "").trim().toLowerCase())
+    .filter(Boolean)
+    .some((entry) => hay.includes(entry));
+}
+
+function uniq(list) {
+  return Array.from(new Set(ensureArray(list).filter(Boolean)));
+}
+
+function buildDeterministicJudgeResult({
+  caseId,
+  caseContext,
+  config,
+  storyText,
+  qualityBar,
+  reason = "Remote story judge unavailable; using deterministic local scoring."
+}) {
+  const text = String(storyText || "");
+  const lower = text.toLowerCase();
+  const truth = caseContext?.truth || {};
+  const characters = ensureArray(caseContext?.characters).filter((character) => !character?.is_location_contact);
+  const killerCharacter = characters.find((character) => character?.id === truth?.killer_id);
+  const killerName = String(killerCharacter?.name || "").trim();
+  const killerTerms = uniq([truth?.killer_id, killerName].concat(safeWords(killerName, 3)));
+  const methodTerms = uniq([truth?.method].concat(safeWords(truth?.method)));
+  const motiveTerms = uniq([truth?.motive].concat(safeWords(truth?.motive)));
+  const timeline = ensureArray(truth?.timeline);
+  const clueChain = ensureArray(config?.clue_chain);
+  const truthLedger = ensureArray(config?.truth_ledger);
+
+  const killerMentioned = includesAny(lower, killerTerms);
+  const methodMentioned = includesAny(lower, methodTerms);
+  const motiveMentioned = includesAny(lower, motiveTerms);
+
+  let timelineHits = 0;
+  const missingTimeline = [];
+  for (const item of timeline) {
+    const timelineTerms = safeWords(item);
+    const hit = timelineTerms.length ? includesAny(lower, timelineTerms.slice(0, 6)) : false;
+    if (hit) timelineHits += 1;
+    else missingTimeline.push(String(item || "").trim());
+  }
+  const timelineRatio = timeline.length ? timelineHits / timeline.length : 1;
+
+  let clueHits = 0;
+  for (const step of clueChain) {
+    if (includesAny(lower, ensureArray(step?.triggers).slice(0, 6))) clueHits += 1;
+  }
+  const clueRatio = clueChain.length ? clueHits / clueChain.length : 1;
+
+  const characterMentions = characters.filter((character) => {
+    const name = String(character?.name || "").trim();
+    return name && lower.includes(name.toLowerCase());
+  }).length;
+  const characterRatio = characters.length ? characterMentions / characters.length : 1;
+
+  const score = {
+    internal_consistency: Math.max(0, Math.min(25, Math.round(14 + timelineRatio * 7 + clueRatio * 4))),
+    mom_integrity: Math.max(
+      0,
+      Math.min(
+        20,
+        4 +
+          (killerMentioned ? 5 : 0) +
+          (methodMentioned ? 5 : 0) +
+          (motiveMentioned ? 5 : 0) +
+          Math.round(timelineRatio * 1)
+      )
+    ),
+    clue_fairness: Math.max(0, Math.min(20, Math.round(10 + clueRatio * 8 + Math.min(2, timelineRatio * 2)))),
+    character_relationship_coherence: Math.max(0, Math.min(15, Math.round(6 + characterRatio * 8))),
+    investigative_plausibility: Math.max(0, Math.min(10, Math.round(5 + clueRatio * 4))),
+    ending_payoff_and_closure: Math.max(
+      0,
+      Math.min(10, 4 + (killerMentioned ? 2 : 0) + (motiveMentioned ? 2 : 0) + (clueRatio >= 0.6 ? 2 : 0))
+    )
+  };
+  score.total =
+    score.internal_consistency +
+    score.mom_integrity +
+    score.clue_fairness +
+    score.character_relationship_coherence +
+    score.investigative_plausibility +
+    score.ending_payoff_and_closure;
+
+  const missingAnchors = [];
+  if (!killerMentioned) missingAnchors.push("killer_identity");
+  if (!methodMentioned) missingAnchors.push("method");
+  if (!motiveMentioned) missingAnchors.push("motive");
+  if (timelineRatio < 0.6) missingAnchors.push("timeline_coverage");
+  if (clueRatio < 0.5) missingAnchors.push("clue_path");
+  if (characterRatio < 0.4) missingAnchors.push("character_coverage");
+
+  const fairClues = truthLedger.slice(0, 4).map((fact) => String(fact?.id || "").trim()).filter(Boolean);
+  const missingClues = clueChain
+    .filter((step) => !includesAny(lower, ensureArray(step?.triggers).slice(0, 6)))
+    .slice(0, 4)
+    .map((step) => `Missing clue path coverage for step "${step.id}".`);
+
+  const normalized = {
+    executive_verdict: [
+      `Deterministic local judge used for ${caseId || "case"} (${reason}).`,
+      score.total >= 80 ? "Story currently meets the quality bar." : "Story needs enrichment before publish."
+    ],
+    assumptions: ["Local deterministic scoring applied because remote judge response was unavailable."],
+    critical_contradictions: [],
+    fair_play_audit: {
+      fair_clues: fairClues,
+      missing_or_withheld_clues: missingClues,
+      solvable_before_reveal: clueRatio >= 0.6 ? "yes" : "partial",
+      notes: [
+        `Timeline anchors covered: ${timelineHits}/${timeline.length || 0}.`,
+        `Clue triggers covered: ${clueHits}/${clueChain.length || 0}.`
+      ]
+    },
+    character_motive_audit: characters.slice(0, 5).map((character) => ({
+      suspect: String(character?.name || character?.id || "").trim(),
+      motive_strength: motiveMentioned ? "adequate" : "weak",
+      contradiction_risk: "low",
+      believability: characterMentions > 0 ? "medium" : "low",
+      notes: [
+        motiveMentioned
+          ? "Motive language exists in story text."
+          : "Add motive-specific language tied to this suspect."
+      ]
+    })),
+    timeline_opportunity_audit: {
+      murder_window: timeline[0] ? String(timeline[0]) : "",
+      killer_access_viability: killerMentioned ? "plausible from story anchors" : "needs explicit killer timeline anchor",
+      impossible_movements: [],
+      opportunity_notes: [
+        missingTimeline.length
+          ? `Missing timeline beats: ${missingTimeline.slice(0, 3).join(" | ")}`
+          : "All timeline beats referenced."
+      ]
+    },
+    patch_plan_top5: missingAnchors.map((anchor) => `Add explicit narrative coverage for ${anchor}.`).slice(0, 5),
+    final_score: score,
+    publish_readiness_verdict:
+      score.total >= qualityBar.total_min
+        ? "Publish-ready under deterministic gate."
+        : "Not publish-ready under deterministic gate.",
+    report_markdown: [
+      "### Executive Verdict",
+      `- Deterministic local judge used (${reason}).`,
+      `- Total score: ${score.total}/100.`,
+      "",
+      "### Coverage",
+      `- Killer anchor: ${killerMentioned ? "present" : "missing"}`,
+      `- Method anchor: ${methodMentioned ? "present" : "missing"}`,
+      `- Motive anchor: ${motiveMentioned ? "present" : "missing"}`,
+      `- Timeline coverage: ${timelineHits}/${timeline.length || 0}`,
+      `- Clue coverage: ${clueHits}/${clueChain.length || 0}`
+    ].join("\n"),
+    deterministic_analysis: {
+      missing_anchors: missingAnchors,
+      killer_mentioned: killerMentioned,
+      method_mentioned: methodMentioned,
+      motive_mentioned: motiveMentioned,
+      timeline_hits: timelineHits,
+      timeline_total: timeline.length,
+      clue_hits: clueHits,
+      clue_total: clueChain.length
+    }
+  };
+
+  const qualityGate = evaluateQualityGate(normalized, qualityBar);
+  return {
+    model_used: "deterministic-local",
+    model_mock: true,
+    quality_gate: qualityGate,
+    ...normalized
+  };
+}
+
+function fallbackJudgeResult(qualityBar, context = {}) {
+  if (context?.caseContext && context?.config && context?.storyText) {
+    return buildDeterministicJudgeResult({
+      caseId: context.caseId || "",
+      caseContext: context.caseContext,
+      config: context.config,
+      storyText: context.storyText,
+      qualityBar,
+      reason: context.reason || "Fallback path"
+    });
+  }
   return {
     model_used: "fallback",
     model_mock: true,
@@ -495,7 +694,13 @@ export async function runMurderMysteryJudge({
 
   const client = getOpenAIClient();
   if (!client) {
-    return fallbackJudgeResult(bar);
+    return fallbackJudgeResult(bar, {
+      caseId,
+      caseContext,
+      config,
+      storyText: text,
+      reason: "No OpenAI client"
+    });
   }
 
   const context = buildJudgeContext({
@@ -537,7 +742,15 @@ export async function runMurderMysteryJudge({
   try {
     const response = await createResponse(client, responseParams);
     const outputText = extractOutputText(response);
-    if (!outputText) return fallbackJudgeResult(bar);
+    if (!outputText) {
+      return fallbackJudgeResult(bar, {
+        caseId,
+        caseContext,
+        config,
+        storyText: text,
+        reason: "Empty model output"
+      });
+    }
     const parsed = JSON.parse(outputText);
     const normalized = normalizeJudgeOutput(parsed);
     const qualityGate = evaluateQualityGate(normalized, bar);
@@ -547,7 +760,13 @@ export async function runMurderMysteryJudge({
       quality_gate: qualityGate,
       ...normalized
     };
-  } catch {
-    return fallbackJudgeResult(bar);
+  } catch (error) {
+    return fallbackJudgeResult(bar, {
+      caseId,
+      caseContext,
+      config,
+      storyText: text,
+      reason: String(error?.message || error || "Model response failed")
+    });
   }
 }

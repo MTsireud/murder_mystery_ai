@@ -19,11 +19,7 @@
             <button id="openBriefingBtn" class="ghost-inline" type="button" data-i18n="openCaseFolder">
               Open Case Folder
             </button>
-            <button id="openNarrationBtn" class="ghost-inline" type="button" data-i18n="openWatsonIntro">
-              Watson Intro
-            </button>
           </div>
-          <div id="caseIntro" class="case-intro"></div>
         </div>
 
         <div class="status hero-status">
@@ -42,7 +38,7 @@
             <span class="label" data-i18n="caseSelect">Case</span>
             <select id="caseSelect" class="language-select"></select>
           </div>
-          <div class="status-card">
+          <div class="status-card" data-debug-only>
             <span class="label" data-i18n="modelMode">Model Mode</span>
             <select id="modelModeSelect" class="language-select">
               <option value="auto" data-i18n="modelAuto">Auto</option>
@@ -50,11 +46,11 @@
               <option value="critical" data-i18n="modelCritical">Critical</option>
             </select>
           </div>
-          <div class="status-card">
+          <div class="status-card" data-debug-only>
             <span class="label" data-i18n="modelUsed">Model Used</span>
             <span id="modelUsedValue" class="value">-</span>
           </div>
-          <div class="status-card">
+          <div class="status-card" data-debug-only>
             <span class="label" data-i18n="caseDrawer">Case Drawer</span>
             <label class="toggle">
               <input id="skillsToggle" type="checkbox" />
@@ -73,9 +69,6 @@
             </button>
             <button id="chatTabWatson" class="chat-tab" type="button" data-i18n="chatTabWatson">
               Watson
-            </button>
-            <button id="watsonHintBtn" class="chat-tab chat-tab-hint" type="button" data-i18n="watsonNeedHint">
-              Need Hint
             </button>
           </div>
           <div id="chatThreadTabs" class="chat-thread-tabs">
@@ -96,13 +89,6 @@
         <section id="panelCharacters" class="panel characters" data-mobile-panel="characters">
           <h2 data-i18n="characters">Characters</h2>
           <div id="characterList" class="character-list"></div>
-          <div class="character-divider" data-i18n="caseAdvisors">Advisors</div>
-          <button id="watsonCard" class="character-card watson" type="button">
-            <div class="character-meta">
-              <div class="character-name" data-i18n="watsonName">Watson</div>
-              <div class="character-role" data-i18n="watsonRole">Analyst</div>
-            </div>
-          </button>
           <button id="resetBtn" class="ghost" data-i18n="resetCase">Reset Case</button>
         </section>
 
@@ -159,11 +145,7 @@
             <h3 data-i18n="sceneObservationsTitle">Observations</h3>
             <ul id="observationList" class="scene-checklist compact"></ul>
           </div>
-          <div class="location-prompts">
-            <h3 data-i18n="scenePromptsTitle">Question prompts</h3>
-            <div id="observationPromptList" class="prompt-chips"></div>
-          </div>
-          <div class="scene-settings">
+          <div class="scene-settings" data-debug-only>
             <span class="scene-settings-title" data-i18n="sceneSettingsTitle">Interaction cues</span>
             <label class="toggle">
               <input id="analyzeToggle" type="checkbox" />
@@ -194,36 +176,20 @@
         <section id="panelSolution" class="panel solution" data-mobile-panel="solution">
           <h2 data-i18n="solutionTitle">Case Resolution</h2>
           <p class="solution-hint" data-i18n="solutionHint">
-            Submit your full theory and include every character.
+            Submit your theory in plain text: who did what, why, and the evidence that proves it.
           </p>
-          <div class="solution-fields">
-            <label class="field">
-              <span data-i18n="solutionKillerLabel">Killer</span>
-              <input id="solutionKiller" type="text" autocomplete="off" />
-            </label>
-            <label class="field">
-              <span data-i18n="solutionMethodLabel">Method</span>
-              <input id="solutionMethod" type="text" autocomplete="off" />
-            </label>
-            <label class="field">
-              <span data-i18n="solutionMotiveLabel">Motive</span>
-              <input id="solutionMotive" type="text" autocomplete="off" />
-            </label>
-          </div>
-          <label class="field">
-            <span data-i18n="solutionTimelineLabel">Timeline summary</span>
-            <textarea id="solutionTimeline" rows="3"></textarea>
+          <label class="field field--narrative">
+            <span data-i18n="solutionNarrativeLabel">Your theory</span>
+            <textarea id="solutionNarrative" rows="8"></textarea>
           </label>
-          <label class="field">
-            <span data-i18n="solutionCharacterNotesLabel">Character involvement</span>
-            <textarea id="solutionCharacterNotes" rows="4"></textarea>
-          </label>
+          <p class="solution-template" data-i18n="solutionTemplateHint">
+            Template: who did what, motive, and the evidence trail.
+          </p>
           <div class="solution-actions">
-            <label class="reveal-toggle">
-              <input id="revealToggle" type="checkbox" />
-              <span data-i18n="solutionReveal">Reveal solution (you lose)</span>
-            </label>
-            <button id="checkSolutionBtn" type="button" data-i18n="solutionCheck">Check Solution</button>
+            <button id="checkSolutionBtn" type="button" data-i18n="solutionCheck">Submit Theory</button>
+            <button id="revealSolutionBtn" type="button" class="danger" data-i18n="solutionReveal">
+              Show solution (lose)
+            </button>
           </div>
           <div id="solutionResult" class="solution-result"></div>
         </section>
@@ -253,11 +219,11 @@
       </nav>
     </div>
 
-    <button id="skillsDrawerTab" class="drawer-tab" type="button" data-i18n="caseDrawerTab" hidden>
+    <button id="skillsDrawerTab" class="drawer-tab" type="button" data-i18n="caseDrawerTab" hidden data-debug-only>
       Case Drawer
     </button>
 
-    <aside id="skillsDrawer" class="skills-drawer" aria-hidden="true" hidden>
+    <aside id="skillsDrawer" class="skills-drawer" aria-hidden="true" hidden data-debug-only>
       <div class="drawer-inner">
         <div class="drawer-header">
           <div>

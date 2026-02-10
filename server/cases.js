@@ -960,31 +960,6 @@ const CASE_LIBRARY = [
             "ιδιωτικά χρέη από αποτυχημένη επένδυση"
           )
         },
-        relationship_to_victim: loc("private investigator hired by Elena", "ιδιωτική ερευνήτρια που προσλήφθηκε από την Έλενα"),
-        relationship_summary: loc(
-          "Mara was hired by Elena and is protective of the family; she feeds you notes from the shadows.",
-          "Η Mara προσλήφθηκε από την Έλενα και προστατεύει την οικογένεια· σου δίνει σημειώσεις από τη σκιά."
-        ),
-        relationship_to_victim: loc("courier carrying the family’s messages", "διανομέας που μεταφέρει μηνύματα της οικογένειας"),
-        relationship_summary: loc(
-          "Yannis handles burner phones and delivery runs; he’s nervous but loyal when money flows.",
-          "Ο Yannis κουβαλά τα burner και τις διανομές· είναι νευρικός αλλά πιστός όταν κυλάει το χρήμα."
-        ),
-        relationship_to_victim: loc("logistics contractor tied to the family", "εργολάβος logistics συνδεδεμένη με την οικογένεια"),
-        relationship_summary: loc(
-          "Katerina keeps the marina contracts running and is widely trusted for discreet moves; she knows how to make cash vanish.",
-          "Η Katerina κρατά τις συμφωνίες της μαρίνας σε λειτουργία και εμπιστεύονται την παρασκηνιακή της δουλειά· ξέρει πώς να εξαφανίζει τα μετρητά."
-        ),
-        relationship_to_victim: loc("family driver and escort", "οικογενειακός οδηγός και συνοδός"),
-        relationship_summary: loc(
-          "Tasos is the calm driver who escorts the family and rarely questions orders; with pressure rising, he keeps his head down.",
-          "Ο Τάσος είναι ο ήρεμος οδηγός που συνοδεύει την οικογένεια και σπάνια αμφισβητεί εντολές· με την πίεση να ανεβαίνει, κρατάει χαμηλούς τόνους."
-        ),
-        relationship_to_victim: loc("adoptive mother and protector", "θετή μητέρα και προστάτιδα"),
-        relationship_summary: loc(
-          "Elena is Nikos’s adoptive mother and spouse; she fights to keep the family safe and mediates between Spiros and the board.",
-          "Η Έλενα είναι θετή μητέρα και σύζυγος του Νίκου· παλεύει για την ασφάλεια της οικογένειας και μεσολαβεί ανάμεσα στον Spiros και το διοικητικό συμβούλιο."
-        ),
         relationship_to_victim: loc("family associate and logistics lead", "συνεργάτης της οικογένειας και υπεύθυνος logistics"),
         relationship_summary: loc(
           "He manages Nikos’s logistics and keeps the family choices steady while handling sensitive contacts.",
@@ -993,7 +968,7 @@ const CASE_LIBRARY = [
         relationships: [
           {
             with: "elena",
-            relation: loc("family advisor and confidant", "σύμβουλος και έμπιστος της οικογένειας"),
+            relation: loc("adoptive mother and principal family decision-maker", "θετή μητέρα και βασική λήπτρια αποφάσεων της οικογένειας"),
             since: loc("2004", "2004"),
             trust: loc("high", "υψηλή"),
             notes: loc("handles sensitive decisions for her", "χειρίζεται ευαίσθητες αποφάσεις")

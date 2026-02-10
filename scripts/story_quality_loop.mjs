@@ -1,3 +1,6 @@
+// Story Loop CLI
+// Run: `npm run story:loop -- <caseId> --file <story.txt>` or `cat <story.txt> | npm run story:loop -- <caseId>`.
+// Purpose: ingest a story, run judge/enrich loop, and optionally persist a passed backlog artifact.
 import "dotenv/config";
 import fs from "fs";
 import { createStateFromCase, getCaseById } from "../server/cases.js";
@@ -27,6 +30,7 @@ async function main() {
   const sourceLabel = readFlag(args, "--source");
   const maxRounds = readNumberFlag(args, "--max-rounds", 3);
   const autoFix = !args.includes("--no-fix");
+  const persistBacklog = !args.includes("--no-backlog");
   const includeConfig = args.includes("--include-config");
 
   const caseData = getCaseById(caseId);
@@ -62,7 +66,8 @@ async function main() {
     sourceLabel,
     maxRounds,
     autoFix,
-    includeConfig
+    includeConfig,
+    persistBacklog
   });
 
   if (result?.error) {

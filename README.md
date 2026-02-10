@@ -23,10 +23,12 @@ Local MVP for a shared-world, multi-character interrogation sim.
   - Returns structured scores + a full markdown critique report.
 - Feedback loop endpoint: `POST /api/story-loop`
   - Runs judge -> pass/fail gate -> minimal patch -> re-judge (up to `max_rounds`).
-  - Returns each round’s judge report, patch summary, and final verdict.
+  - If gate passes, runs constructor next and (by default) writes a backlog entry to `server/story_backlog/`.
+  - Returns each round’s judge report, patch summary, final verdict, constructor status, and backlog metadata.
 - Unified endpoint: `POST /api/storylab`
   - Same inputs as above.
   - Set `judge_only: true` for judge-only mode; default runs loop mode.
+  - Use `persist_backlog: false` to skip backlog write.
 
 Quality gate (pass criteria):
 - total score >= 80/100
@@ -40,6 +42,8 @@ CLI:
 - Judge only (text report): `npm run story:judge -- <caseId> --file <story.txt>`
 - Judge only (JSON): `npm run story:judge -- <caseId> --file <story.txt> --json`
 - Feedback loop JSON: `npm run story:loop -- <caseId> --file <story.txt>`
+  - Reads from stdin when no `--file` is provided, so copy/paste works directly.
+  - Add `--no-backlog` to skip backlog persistence.
 - Batch judge+fix all library stories: `npm run story:all -- --max-rounds 3 --write-casepacks`
 - Legacy storylab review: `npm run storylab:review -- <caseId> <novel-file-path>`
 

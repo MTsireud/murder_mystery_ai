@@ -308,6 +308,9 @@ Files:
 
 ## 12. Detailed Engineering Task Breakdown (Granular TODO)
 
+### 12.1 Hotfixes (Data + Context Integrity)
+- [x] H1. Fix Athens character relationship fact drift in `/Users/markostsirekas/codex/murder_mystery/server/cases.js` and strengthen canonical people facts context in `/Users/markostsirekas/codex/murder_mystery/server/llm.js` so character role statements remain case-consistent.
+
 ### 12.0 Customer-Facing Feature Bundles (Primary Tracking)
 Definition:
 1. A feature is a bundle of fixes and changes that materially improves customer experience.
@@ -335,7 +338,9 @@ Bundle scope:
 3. Thread isolation regression coverage: F7, F8
 
 Status:
-1. Completed
+1. In progress
+2. UI thread behavior complete (`D8-D10`)
+3. Backend API thread contracts and regression checks pending (`B7-B9`, `F7-F8`)
 
 #### FB3. Evidence-Aware Watson Guidance
 Customer outcome:
@@ -368,7 +373,7 @@ Customer outcome:
 
 Bundle scope:
 1. Mobile interaction and motion tasks in Section 18.6: D8-D12 (Section 18 numbering)
-2. Mobile/accessibility verification in Section 18.6: F7-F9 (Section 18 numbering)
+2. Mobile/accessibility verification in Section 18.6: F9-F11 (Section 18 numbering)
 
 Status:
 1. Not started
@@ -459,6 +464,8 @@ Dependencies:
 - [ ] E4. Update `/Users/markostsirekas/codex/murder_mystery/scripts/construct_casepack.mjs` output verification for hotspot mappings.
 - [ ] E5. Extend story judge in `/Users/markostsirekas/codex/murder_mystery/server/story_judge.js` with visual consistency checks.
 - [ ] E6. Update batch script `/Users/markostsirekas/codex/murder_mystery/scripts/story_quality_all.mjs` to fail on missing visual mappings.
+- [x] E7. Implement deterministic story intake pipeline in `/Users/markostsirekas/codex/murder_mystery/server/story_feedback_loop.js` and `/Users/markostsirekas/codex/murder_mystery/api/story-loop.js`: judge first, auto-enrich loop until quality pass (bounded), then constructor stage, then backlog persistence for passed stories.
+- [x] E8. Add deterministic no-model/no-response fallback in `/Users/markostsirekas/codex/murder_mystery/server/story_judge.js` and `/Users/markostsirekas/codex/murder_mystery/server/story_feedback_loop.js` so story loop can still assess, enrich, pass, and persist backlog without remote judge availability; add short top-of-file run/usage headers in touched story-ingestion files.
 
 Dependencies:
 1. E1 before E2.
@@ -474,6 +481,28 @@ Dependencies:
 - [ ] F6. Run story judge loop for all cases and log failures.
 - [ ] F7. Verify thread isolation: asking Character A does not appear in Character B transcript.
 - [ ] F8. Verify case/system actions appear only in case thread, not NPC threads.
+
+## Phase G - Case Resolution Repair (Execution 2026-02-10)
+- [ ] G1. Simplify case resolution form in `/Users/markostsirekas/codex/murder_mystery/public/index.html` to a single open-text theory field with evidence-oriented placeholder guidance.
+- [ ] G2. Refactor case resolution submit/reveal handlers in `/Users/markostsirekas/codex/murder_mystery/public/app.js` to support explicit actions:
+  - `Submit theory`
+  - `Show solution (lose)`
+- [ ] G3. Improve solution panel usability and readability in `/Users/markostsirekas/codex/murder_mystery/public/styles.css` for desktop and mobile.
+- [ ] G4. Extend solution copy keys in `/Users/markostsirekas/codex/murder_mystery/public/i18n.js` for the new open-text flow.
+- [ ] G5. Update checker prompt contract in `/Users/markostsirekas/codex/murder_mystery/agents/checker/AGENTS.md` to evaluate open-text theories against canonical truth plus truth-ledger anchors.
+- [ ] G6. Harden `/Users/markostsirekas/codex/murder_mystery/server/checker.js`:
+  - default checker model to low-cost `gpt-4.1-mini` unless overridden
+  - include truth-ledger context in checker input
+  - guarantee canonical reveal payload when reveal is requested
+  - provide deterministic fallback scoring when model output is unavailable/invalid
+- [ ] G7. Extend `/Users/markostsirekas/codex/murder_mystery/scripts/api_contract_smoke.mjs` with `/api/solve` contract checks (submit + reveal paths).
+- [ ] G8. Local verification: restart local server and run smoke checks before handoff.
+
+### UI Simplification Burndown (S1)
+- [x] S1.1 Remove duplicate intro surfaces; keep a single Case Brief entry point.
+- [x] S1.2 Gate developer-only controls (model mode/used, skills drawer, scene toggles) behind /debug mode.
+- [x] S1.3 Reduce Watson entry points to a single access path.
+- [x] S1.4 Remove redundant prompt surface in scene panel; keep prompts in observation sheet.
 
 Dependencies:
 1. F1 requires B complete.
@@ -611,9 +640,9 @@ Add to Phase D:
 - [x] D12. Add optional settings toggle for haptics/sound cues in `/Users/markostsirekas/codex/murder_mystery/public/index.html`, `/Users/markostsirekas/codex/murder_mystery/public/app.js`, and `/Users/markostsirekas/codex/murder_mystery/public/i18n.js`.
 
 Add to Phase F:
-- [ ] F7. Mobile usability QA pass on iOS Safari + Android Chrome (portrait first, landscape second).
-- [ ] F8. Accessibility checks for contrast, dynamic type scaling, and reduced motion behavior.
-- [ ] F9. Verify all required interactions remain available with no hover support.
+- [ ] F9. Mobile usability QA pass on iOS Safari + Android Chrome (portrait first, landscape second).
+- [ ] F10. Accessibility checks for contrast, dynamic type scaling, and reduced motion behavior.
+- [ ] F11. Verify all required interactions remain available with no hover support.
 
 ### 18.7 Updated MVP UI Acceptance Criteria
 1. Core gameplay loop is fully playable with one-hand mobile interaction.
@@ -665,3 +694,253 @@ The user must visualize scenes as part of investigation, not only click abstract
 1. Current approved direction: scene-first visualization with hotspot overlays and prompt bridging.
 2. Runtime generative image/video is not required for MVP completion.
 3. If later adopting runtime generation, truth-ledger binding + deterministic consistency checks are mandatory.
+
+## 20. Mini PRD - Cinematic Multimodal Intro (One-Off Reusable Asset)
+
+### 20.1 Vision
+Deliver a premium, movie-like cold open that plays before the Case File and Watson text intro, so players enter the case with emotional context, character framing, and immediate investigative intent.
+
+Target outcome:
+1. Player feels "inside the story world" within 60-120 seconds.
+2. Intro canon is locked to constructor-authored narrative and story-judge-approved truth.
+3. A single high-quality intro video per case is generated/produced once, versioned, stored, and reused for all future players.
+
+### 20.2 Scope (Mini)
+In scope:
+1. One pre-rendered intro video asset per case (`intro_video_v1`).
+2. Watson-led voiceover track synced to the video.
+3. First-run autoplay modal/screen before Case File.
+4. Replay entry point from Case File/toolbar.
+5. Skip/escape behavior with safe handoff into gameplay.
+6. Post-intro activation handoff to first playable location + first actionable clue prompt.
+
+Out of scope:
+1. Runtime video generation during player session.
+2. Multiple branching intro cuts per player choice.
+3. Per-language lip-sync variants (subtitle + dubbed VO acceptable for mini phase).
+
+### 20.3 Canonical Content Pipeline
+1. Constructor produces `canonical_intro_description`:
+   - setting establishment
+   - key character reveals
+   - incident framing
+   - tonal direction for Watson narration
+2. Story Judge validates:
+   - no contradiction with `truth`, `truth_ledger`, `clue_chain`
+   - no spoilers beyond intended reveal policy
+   - consistent time/location continuity with opening state
+3. Production output:
+   - `video_asset_path`
+   - `audio_asset_path` (Watson narration mix)
+   - `subtitle_asset_path` (EN/EL)
+   - `intro_version`
+4. Runtime uses stored approved assets only.
+
+Rule:
+1. Intro cannot mutate canonical truth; it is presentation of existing canon, not new canon.
+
+### 20.4 Player Experience Flow
+1. Player opens a case for the first time.
+2. Full-screen cinematic intro launches automatically.
+3. Watson narrates as consultant advisor, framing stakes and investigative lens.
+4. Video introduces location mood and major relevant characters without solution reveal.
+5. End-card CTA transitions player into interactive state:
+   - preferred: spawn at first location with contextual objective
+   - optional: auto-open first clue prompt chip from intro takeaway
+6. Case File appears after transition (or via side panel) as supporting reference, not the first impression.
+
+### 20.5 Controls: First Watch, Replay, Skip
+First watch:
+1. Autoplay once per case per player profile/session history.
+2. Show `Skip Intro` after short lock window (e.g., 3-5s) to preserve pacing.
+3. `Escape` key and explicit skip button both available.
+
+Replay:
+1. `Watch Intro` button in Case File header and pause menu.
+2. Replay opens same canonical video version unless newer approved version exists.
+
+Skip behavior:
+1. Skipping records `intro_skipped=true`.
+2. Player still receives activation handoff package:
+   - starting location focus
+   - first recommended action/question
+   - Watson one-line context recap
+
+### 20.6 Activation Design ("Activated User" Requirement)
+Definition of activated user for this feature:
+1. Player completes or skips intro.
+2. Player lands in first location in actionable state.
+3. Player performs at least one of:
+   - observe hotspot
+   - send suggested question
+   - execute first move/action
+
+Activation handoff payload:
+1. `activation.location_id`
+2. `activation.first_objective`
+3. `activation.suggested_prompt`
+4. `activation.first_clue_hint` (non-spoiler)
+
+### 20.7 UX and Narrative Quality Bar
+1. Duration target: 60-120 seconds.
+2. Tone: cinematic, serious, investigative; Watson as strategic storyteller.
+3. No over-exposition: set context, stakes, and cast; avoid solution clues.
+4. Visual continuity must match playable scene geography and character identity.
+5. Audio mix must keep narration intelligible over music/ambience.
+
+### 20.8 Data and Contract Additions (Planning)
+1. Case metadata extensions (authoring/runtime):
+   - `intro.video_asset_path`
+   - `intro.audio_asset_path`
+   - `intro.subtitle_asset_path`
+   - `intro.version`
+   - `intro.duration_sec`
+2. Client state:
+   - `intro_seen_case_ids[]`
+   - `intro_skipped_case_ids[]`
+   - `last_intro_version_seen_by_case`
+3. API response additions:
+   - `should_play_intro`
+   - `intro_payload`
+   - `activation_payload`
+
+### 20.9 Success Metrics (Feature-Level)
+1. `% first-time case sessions that start intro playback`.
+2. `% intros completed vs skipped`.
+3. `time_to_first_action` after intro end/skip.
+4. `% sessions reaching activation criteria within first 3 minutes`.
+5. Retention delta from case start to 10-minute mark vs no-intro baseline.
+
+### 20.10 Risks and Mitigations
+1. Risk: players feel blocked by forced cinematic.
+   Mitigation: short skip lock, always-visible skip, fast post-skip handoff.
+2. Risk: intro spoils mystery.
+   Mitigation: story-judge spoiler gate with explicit reveal boundary checks.
+3. Risk: expensive asset iteration.
+   Mitigation: one-off per case, versioned reuse, approval gate before publish.
+4. Risk: mismatch between intro and gameplay state.
+   Mitigation: constructor + judge continuity check against opening location/objective.
+
+### 20.11 Mini Checklist (Planning Only)
+- [x] M0. Define vision, scope, and non-goals for cinematic intro.
+- [x] M1. Define first-time encounter, replay, skip, and escape UX.
+- [x] M2. Define canonical constructor + story-judge approval pipeline.
+- [x] M3. Define activation handoff and measurable activation criteria.
+- [x] M4. Approve mini PRD and convert to implementation tasks in next planning pass.
+
+### 20.12 Implementation Checklist (Execution)
+
+#### 20.12.1 Phase CI-A - Canonical Spec + Truth-Ledger Integrity
+- [ ] CI-A1. Add intro schema contracts in `/Users/markostsirekas/codex/murder_mystery/server/intro_cinematic.js`:
+  - `IntroSpec` (beats, character_intros, scene_setup, spoiler_guard fields)
+  - `WatsonNarrationScript` (timed lines + subtitle chunks)
+- [ ] CI-A2. Implement `generateCanonicalIntroSpec(...)` using strict JSON schema output via `createResponse(...)` in `/Users/markostsirekas/codex/murder_mystery/server/openai.js`.
+- [ ] CI-A3. Implement `validateIntroBindings(spec, config, state.truth)` in `/Users/markostsirekas/codex/murder_mystery/server/intro_cinematic.js`:
+  - every `fact_id` must exist in `truth_ledger`
+  - every `step_id` must exist in `clue_chain`
+  - no hidden-truth reveal (`killer_id`, method, motive) before allowed phase
+- [ ] CI-A4. Add deterministic normalization for intro spec ids/version fields and reject malformed payloads.
+- [ ] CI-A5. Add integrity unit fixtures in `/Users/markostsirekas/codex/murder_mystery/scripts/` for:
+  - unknown `fact_id` rejection
+  - unknown `step_id` rejection
+  - spoiler-policy rejection
+
+Dependencies:
+1. CI-A1 before CI-A2.
+2. CI-A2 before CI-A3.
+3. CI-A3 before CI-B and CI-C publish flow.
+
+#### 20.12.2 Phase CI-B - Story Judge Gate for Intro Publish
+- [ ] CI-B1. Extend judge input context in `/Users/markostsirekas/codex/murder_mystery/server/story_judge.js` to include intro spec + narration script.
+- [ ] CI-B2. Add intro-specific judge checks:
+  - canonical consistency with immutable truth
+  - spoiler boundary compliance
+  - opening location/time continuity
+- [ ] CI-B3. Add `intro_quality_gate` pass/fail output and block intro publish on fail.
+- [ ] CI-B4. Persist judge report alongside intro manifest for auditability.
+- [ ] CI-B5. Update `scripts/story_quality_all.mjs` to include intro gate checks in batch runs.
+
+Dependencies:
+1. CI-A3 before CI-B2.
+2. CI-B2 before CI-B3.
+3. CI-B3 before CI-C asset publish.
+
+#### 20.12.3 Phase CI-C - OpenAI Content + Asset Build Pipeline (Offline)
+- [ ] CI-C1. Implement `generateWatsonNarrationScript(...)` in `/Users/markostsirekas/codex/murder_mystery/server/intro_cinematic.js` using strict JSON schema.
+- [ ] CI-C2. Generate subtitle assets (EN/EL) from narration timing and save as versioned files.
+- [ ] CI-C3. Produce deterministic shot plan prompts (seeded/versioned) from approved `IntroSpec`.
+- [ ] CI-C4. Add offline build script `/Users/markostsirekas/codex/murder_mystery/scripts/build_intro_assets.mjs`:
+  - loads case + config + intro spec
+  - builds narration + subtitles
+  - writes intro manifest with paths/version/hash
+- [ ] CI-C5. Ensure idempotent rebuild behavior (same inputs => same manifest/version outputs).
+- [ ] CI-C6. Add fallback mode: if video generation is unavailable, keep canonical narration + storyboard stills.
+
+Dependencies:
+1. CI-B3 before CI-C4 publish write.
+2. CI-C1 before CI-C2.
+3. CI-C3 before CI-C4.
+
+#### 20.12.4 Phase CI-D - Runtime State + API Contracts
+- [ ] CI-D1. Extend case/public contracts for intro metadata in `/Users/markostsirekas/codex/murder_mystery/server/i18n.js` and `/Users/markostsirekas/codex/murder_mystery/server/state.js`:
+  - `intro.video_asset_path`
+  - `intro.audio_asset_path`
+  - `intro.subtitle_asset_path`
+  - `intro.version`
+  - `intro.duration_sec`
+- [ ] CI-D2. Add client state fields in `/Users/markostsirekas/codex/murder_mystery/server/state.js`:
+  - `intro_seen_case_ids[]`
+  - `intro_skipped_case_ids[]`
+  - `last_intro_version_seen_by_case`
+- [ ] CI-D3. Add `/api/state` output fields in `/Users/markostsirekas/codex/murder_mystery/api/state.js`:
+  - `should_play_intro`
+  - `intro_payload`
+  - `activation_payload`
+- [ ] CI-D4. Ensure replay requests return canonical stored intro version only.
+- [ ] CI-D5. Ensure activation payload is returned even when intro is skipped.
+
+Dependencies:
+1. CI-C4 before CI-D1.
+2. CI-D1 before CI-D3.
+3. CI-D2 before CI-D5.
+
+#### 20.12.5 Phase CI-E - Frontend Cinematic UX
+- [ ] CI-E1. Add full-screen cinematic intro container to `/Users/markostsirekas/codex/murder_mystery/public/index.html`.
+- [ ] CI-E2. Add intro player styles + reduced-motion handling in `/Users/markostsirekas/codex/murder_mystery/public/styles.css`.
+- [ ] CI-E3. Implement intro playback state in `/Users/markostsirekas/codex/murder_mystery/public/app.js`:
+  - first-run autoplay per case/version
+  - resume-safe close/skip
+  - replay from Case File and pause/settings UI
+- [ ] CI-E4. Add skip lock window (3-5s), explicit skip button, and `Escape` handling.
+- [ ] CI-E5. On complete/skip, execute activation handoff:
+  - land player in starting location
+  - surface first objective
+  - prefill/offer first suggested prompt
+- [ ] CI-E6. Add fallback to existing briefing modal when intro assets are missing/unapproved.
+
+Dependencies:
+1. CI-D3 before CI-E3.
+2. CI-E3 before CI-E4 and CI-E5.
+3. CI-E6 depends on CI-E1 and existing briefing behavior.
+
+#### 20.12.6 Phase CI-F - QA, Regression, and Launch Gate
+- [ ] CI-F1. API smoke: verify `/api/state` intro fields and activation payload shape.
+- [ ] CI-F2. UX flow: first case open autoplays intro once per case/version.
+- [ ] CI-F3. UX flow: replay works and does not alter canonical case state.
+- [ ] CI-F4. UX flow: skip path still delivers activation payload and actionable state.
+- [ ] CI-F5. Integrity: invalid ledger bindings are blocked before publish.
+- [ ] CI-F6. Integrity: spoiler boundary violations fail intro judge gate.
+- [ ] CI-F7. Localization: subtitle and controls work in EN/EL.
+- [ ] CI-F8. Mobile and reduced-motion behavior validated.
+
+Dependencies:
+1. CI-D and CI-E complete before CI-F2/CI-F4.
+2. CI-A and CI-B complete before CI-F5/CI-F6.
+3. CI-F1-F8 must pass before rollout.
+
+### 20.13 Launch Exit Criteria (Cinematic Intro)
+1. Intro payload is always canonical and ledger-validated.
+2. Story judge intro gate passes with zero critical contradictions.
+3. First-run autoplay, replay, skip, and Escape controls all function.
+4. Skip and complete paths both land the player in activated state.
+5. No runtime intro generation occurs in player session.

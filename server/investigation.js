@@ -535,6 +535,12 @@ function getCaseConfig(caseId) {
   return INVESTIGATION_LIBRARY[caseId] || null;
 }
 
+// Public helper for deterministic baseline config without constructor extensions.
+export function getBaselineCaseConfig(caseId) {
+  const config = getCaseConfig(caseId);
+  return config ? deepClone(config) : null;
+}
+
 // Deep-clones config objects before merging constructor output.
 function deepClone(value) {
   if (typeof structuredClone === "function") return structuredClone(value);

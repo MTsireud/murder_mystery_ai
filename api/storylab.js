@@ -1,3 +1,6 @@
+// Storylab API Route
+// Run locally with `npm run dev`, then POST `story_text` to `/api/storylab` (`judge_only` optional).
+// Purpose: unified story intake endpoint for judge-only or full quality loop execution.
 import "dotenv/config";
 import { createStateFromCase, getCaseById } from "../server/cases.js";
 import { readJsonBody } from "../server/request.js";
@@ -24,6 +27,7 @@ export default async function handler(req, res) {
     include_config,
     max_rounds,
     auto_fix,
+    persist_backlog,
     judge_only,
     quality_bar
   } = body || {};
@@ -72,7 +76,8 @@ export default async function handler(req, res) {
         qualityBar: quality_bar,
         maxRounds: max_rounds,
         autoFix: auto_fix !== false,
-        includeConfig: Boolean(include_config)
+        includeConfig: Boolean(include_config),
+        persistBacklog: persist_backlog !== false
       });
 
   if (result?.error) {

@@ -1,3 +1,6 @@
+// Story Loop API Route
+// Run locally with `npm run dev`, then POST `story_text` to `/api/story-loop`.
+// Purpose: execute judge/enrich loop, constructor pass, and optional backlog persistence.
 import "dotenv/config";
 import { createStateFromCase, getCaseById } from "../server/cases.js";
 import { readJsonBody } from "../server/request.js";
@@ -23,6 +26,7 @@ export default async function handler(req, res) {
     include_config,
     max_rounds,
     auto_fix,
+    persist_backlog,
     quality_bar
   } = body || {};
   const storyText = String(novel || story_text || "");
@@ -56,7 +60,8 @@ export default async function handler(req, res) {
     qualityBar: quality_bar,
     maxRounds: max_rounds,
     autoFix: auto_fix !== false,
-    includeConfig: Boolean(include_config)
+    includeConfig: Boolean(include_config),
+    persistBacklog: persist_backlog !== false
   });
 
   if (result?.error) {

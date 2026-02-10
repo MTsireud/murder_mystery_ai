@@ -1,5 +1,12 @@
+// Story Feedback Loop Service
+// Run: `npm run dev` + `POST /api/story-loop`, or CLI `npm run story:loop -- <caseId> --file <story.txt>`.
+// Purpose: judge/enrich loop for pasted stories, constructor merge, and backlog persistence.
+import crypto from "crypto";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import { createResponse, getOpenAIClient } from "./openai.js";
-import { constructCaseConfig } from "./investigation.js";
+import { constructCaseConfig, getBaselineCaseConfig } from "./investigation.js";
 import { getLocalized, normalizeLanguage } from "./i18n.js";
 import { loadPrompt } from "./prompts.js";
 import { applyGameplayPatch } from "./storylab.js";
@@ -15,6 +22,8 @@ const STORY_FIXER_MAX_OUTPUT_TOKENS = Math.max(
 );
 const STORY_FIXER_TEMPERATURE = Number(process.env.OPENAI_TEMPERATURE || 0.2);
 const STRATEGY_ENUM = ["bluff", "pressure", "empathy", "evidence_push"];
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const STORY_BACKLOG_DIR = path.join(__dirname, "story_backlog");
 
 const FIXER_SCHEMA = {
   type: "object",
@@ -153,6 +162,108 @@ function summarizeConfig(config) {
   };
 }
 
+function buildDeterministicStoryAddendum({ caseContext, config, judge }) {
+  const truth = caseContext?.truth || {};
+  const characters = ensureArray(caseContext?.characters).filter((character) => !character?.is_location_contact);
+  const killer = characters.find((character) => character?.id === truth?.killer_id);
+  const killerLabel = killer?.name
+    ? `${killer.name} (${truth?.killer_id || "unknown"})`
+    : truth?.killer_id || "unknown";
+  const castLine = characters
+    .map((character) => String(character?.name || "").trim())
+    .filter(Boolean)
+    .join(", ");
+  const timeline = ensureArray(truth?.timeline).slice(0, 4);
+  const clueSteps = ensureArray(config?.clue_chain).slice(0, 4).map((step) => step?.id).filter(Boolean);
+  const missingAnchors = ensureArray(judge?.deterministic_analysis?.missing_anchors);
+  if (!missingAnchors.length) return "";
+
+  return [
+    "",
+    "### Canonical Enrichment Addendum",
+    `Killer anchor: ${killerLabel}.`,
+    castLine ? `Character roster anchors: ${castLine}.` : "",
+    `Method anchor: ${String(truth?.method || "").trim()}.`,
+    `Motive anchor: ${String(truth?.motive || "").trim()}.`,
+    timeline.length ? `Timeline anchors:\n- ${timeline.join("\n- ")}` : "",
+    clueSteps.length ? `Investigative clue path ids: ${clueSteps.join(", ")}.` : "",
+    `Missing anchors addressed: ${missingAnchors.join(", ")}.`
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
+function normalizePatchPayload(patch) {
+  return {
+    truth_ledger_additions: ensureArray(patch?.truth_ledger_additions),
+    truth_ledger_updates: ensureArray(patch?.truth_ledger_updates),
+    clue_step_updates: ensureArray(patch?.clue_step_updates),
+    statement_scripts_additions: ensureArray(patch?.statement_scripts_additions)
+  };
+}
+
+function mergePatchPayloads(basePatch, nextPatch) {
+  const current = normalizePatchPayload(basePatch);
+  const incoming = normalizePatchPayload(nextPatch);
+  return {
+    truth_ledger_additions: current.truth_ledger_additions.concat(incoming.truth_ledger_additions),
+    truth_ledger_updates: current.truth_ledger_updates.concat(incoming.truth_ledger_updates),
+    clue_step_updates: current.clue_step_updates.concat(incoming.clue_step_updates),
+    statement_scripts_additions: current.statement_scripts_additions.concat(
+      incoming.statement_scripts_additions
+    )
+  };
+}
+
+function storyBacklogId(caseId, storyText) {
+  const hash = crypto
+    .createHash("sha1")
+    .update(`${String(caseId || "").trim()}\n${String(storyText || "").trim()}`)
+    .digest("hex")
+    .slice(0, 12);
+  return `${String(caseId || "").trim() || "unknown-case"}-${hash}`;
+}
+
+function persistStoryBacklogEntry({
+  caseId,
+  storyInputText,
+  storyFinalText,
+  caseContext,
+  loopResult,
+  finalCasepack,
+  sourceLabel
+}) {
+  const id = storyBacklogId(caseId, storyFinalText || storyInputText);
+  const entry = {
+    id,
+    created_at: new Date().toISOString(),
+    case_id: caseId,
+    source_label: String(sourceLabel || "story-intake"),
+    story_input_text: String(storyInputText || ""),
+    story_final_text: String(storyFinalText || ""),
+    quality_gate: loopResult?.rounds?.[loopResult.rounds.length - 1]?.judge?.quality_gate || {},
+    rounds_completed: Number(loopResult?.rounds_completed || 0),
+    final_score: Number(
+      loopResult?.rounds?.[loopResult.rounds.length - 1]?.judge?.final_score?.total || 0
+    ),
+    final_casepack_summary: summarizeConfig(finalCasepack),
+    final_casepack: finalCasepack,
+    seed_characters: ensureArray(caseContext?.characters).map((character) => ({
+      id: character?.id || "",
+      name: character?.name || "",
+      role: character?.role || "",
+      relationship_to_victim: character?.relationship_to_victim || ""
+    }))
+  };
+  fs.mkdirSync(STORY_BACKLOG_DIR, { recursive: true });
+  const outputPath = path.join(STORY_BACKLOG_DIR, `${id}.json`);
+  fs.writeFileSync(outputPath, JSON.stringify(entry, null, 2));
+  return {
+    id,
+    output_path: outputPath
+  };
+}
+
 function buildFixerContext({
   caseId,
   caseContext,
@@ -221,6 +332,7 @@ function buildFixerContext({
 function normalizePatch(raw) {
   const fallback = {
     patch_summary: [],
+    story_addendum: "",
     gameplay_patch: {
       truth_ledger_additions: [],
       truth_ledger_updates: [],
@@ -231,6 +343,7 @@ function normalizePatch(raw) {
   const data = raw && typeof raw === "object" ? raw : fallback;
   return {
     patch_summary: normalizeStringList(data.patch_summary),
+    story_addendum: String(data.story_addendum || "").trim(),
     gameplay_patch: {
       truth_ledger_additions: ensureArray(data.gameplay_patch?.truth_ledger_additions),
       truth_ledger_updates: ensureArray(data.gameplay_patch?.truth_ledger_updates),
@@ -251,10 +364,14 @@ async function proposePatchFromJudge({
 }) {
   const client = getOpenAIClient();
   if (!client) {
+    const storyAddendum = buildDeterministicStoryAddendum({ caseContext, config, judge });
     return {
-      model_used: "fallback",
+      model_used: "deterministic-local",
       model_mock: true,
-      patch_summary: ["Patch generator unavailable without model access."],
+      patch_summary: storyAddendum
+        ? ["Deterministic addendum generated to cover missing anchors."]
+        : ["No deterministic addendum required."],
+      story_addendum: storyAddendum,
       gameplay_patch: {
         truth_ledger_additions: [],
         truth_ledger_updates: [],
@@ -300,10 +417,14 @@ async function proposePatchFromJudge({
     const response = await createResponse(client, responseParams);
     const outputText = extractOutputText(response);
     if (!outputText) {
+      const storyAddendum = buildDeterministicStoryAddendum({ caseContext, config, judge });
       return {
-        model_used: "fallback",
+        model_used: "deterministic-local",
         model_mock: true,
-        patch_summary: ["Patch generator returned no content."],
+        patch_summary: storyAddendum
+          ? ["Model returned no patch; deterministic addendum generated instead."]
+          : ["Model returned no patch; no deterministic addendum required."],
+        story_addendum: storyAddendum,
         gameplay_patch: {
           truth_ledger_additions: [],
           truth_ledger_updates: [],
@@ -319,10 +440,14 @@ async function proposePatchFromJudge({
       ...normalizePatch(parsed)
     };
   } catch {
+    const storyAddendum = buildDeterministicStoryAddendum({ caseContext, config, judge });
     return {
-      model_used: "fallback",
+      model_used: "deterministic-local",
       model_mock: true,
-      patch_summary: ["Patch generator failed; no patch applied."],
+      patch_summary: storyAddendum
+        ? ["Patch generator failed; deterministic addendum generated instead."]
+        : ["Patch generator failed; no deterministic addendum required."],
+      story_addendum: storyAddendum,
       gameplay_patch: {
         truth_ledger_additions: [],
         truth_ledger_updates: [],
@@ -346,25 +471,33 @@ export async function runStoryQualityFeedbackLoop({
   qualityBar = null,
   maxRounds = 3,
   autoFix = true,
-  includeConfig = false
+  includeConfig = false,
+  persistBacklog = false
 }) {
   if (!caseId) return { error: "caseId is required" };
   if (!storyText || !String(storyText).trim()) return { error: "storyText is required" };
   if (!caseContext || typeof caseContext !== "object") return { error: "caseContext is required" };
 
-  const boundedRounds = Math.max(1, Math.min(6, Number(maxRounds) || 3));
-  const baseConfig = await constructCaseConfig(caseId, caseContext);
+  const boundedRounds = Math.max(1, Math.min(8, Number(maxRounds) || 4));
+  const baseConfig = getBaselineCaseConfig(caseId);
   if (!baseConfig) return { error: `No gameplay config found for case ${caseId}` };
 
   let workingConfig = baseConfig;
+  let workingStoryText = String(storyText || "");
   const rounds = [];
+  let cumulativePatch = {
+    truth_ledger_additions: [],
+    truth_ledger_updates: [],
+    clue_step_updates: [],
+    statement_scripts_additions: []
+  };
 
   for (let round = 1; round <= boundedRounds; round += 1) {
     const judge = await runMurderMysteryJudge({
       caseId,
       caseContext,
       config: workingConfig,
-      storyText,
+      storyText: workingStoryText,
       castList,
       timeline,
       clueList,
@@ -393,13 +526,19 @@ export async function runStoryQualityFeedbackLoop({
       caseId,
       caseContext,
       config: workingConfig,
-      storyText,
+      storyText: workingStoryText,
       judge,
       round,
       language
     });
 
     const patchedConfig = applyGameplayPatch(workingConfig, patchResult.gameplay_patch);
+    const storyAddendum = String(patchResult.story_addendum || "").trim();
+    const nextStoryText =
+      storyAddendum && !workingStoryText.includes(storyAddendum)
+        ? `${workingStoryText.trim()}\n\n${storyAddendum}`.trim()
+        : workingStoryText;
+    const storyChanged = nextStoryText !== workingStoryText;
     const changed =
       ensureArray(patchResult.gameplay_patch?.truth_ledger_additions).length +
         ensureArray(patchResult.gameplay_patch?.truth_ledger_updates).length +
@@ -410,28 +549,67 @@ export async function runStoryQualityFeedbackLoop({
     roundResult.patch = patchResult;
     roundResult.config_before = summarizeConfig(workingConfig);
     roundResult.config_after = summarizeConfig(patchedConfig);
+    roundResult.story_before_chars = workingStoryText.length;
+    roundResult.story_after_chars = nextStoryText.length;
     rounds.push(roundResult);
+    cumulativePatch = mergePatchPayloads(cumulativePatch, patchResult.gameplay_patch);
 
-    if (!changed || !patchedConfig) {
+    if ((!changed && !storyChanged) || !patchedConfig) {
       break;
     }
     workingConfig = patchedConfig;
+    workingStoryText = nextStoryText;
   }
 
   const finalRound = rounds[rounds.length - 1] || null;
   const finalJudge = finalRound?.judge || null;
+  const passed = Boolean(finalJudge?.quality_gate?.pass);
+
+  let constructorRan = false;
+  let constructedConfig = workingConfig;
+  if (passed) {
+    const constructorConfig = await constructCaseConfig(caseId, caseContext);
+    if (constructorConfig) {
+      constructorRan = true;
+      constructedConfig = applyGameplayPatch(constructorConfig, cumulativePatch);
+    }
+  }
+
+  let backlog = null;
+  let backlogError = "";
+  if (passed && persistBacklog) {
+    try {
+      backlog = persistStoryBacklogEntry({
+        caseId,
+        storyInputText: storyText,
+        storyFinalText: workingStoryText,
+        caseContext,
+        loopResult: { rounds_completed: rounds.length, rounds },
+        finalCasepack: constructedConfig,
+        sourceLabel
+      });
+    } catch (error) {
+      backlogError = String(error?.message || error || "");
+    }
+  }
+
   return {
     case_id: caseId,
-    pass: Boolean(finalJudge?.quality_gate?.pass),
+    pass: passed,
     verdict: finalJudge?.quality_gate?.verdict || "fail",
+    pipeline_order: ["judge", "enrich_loop", "constructor", "backlog"],
     rounds_completed: rounds.length,
     auto_fix: Boolean(autoFix),
     quality_bar_used: finalJudge?.quality_gate?.thresholds || qualityBar || null,
     base_config: summarizeConfig(baseConfig),
-    final_config: summarizeConfig(workingConfig),
+    constructor_ran: constructorRan,
+    final_config: summarizeConfig(constructedConfig),
     rounds,
+    final_story_text: workingStoryText,
     final_report_markdown: finalJudge?.report_markdown || "",
     final_publish_readiness_verdict: finalJudge?.publish_readiness_verdict || "",
-    final_casepack: includeConfig ? workingConfig : undefined
+    backlog,
+    backlog_error: backlogError || undefined,
+    final_casepack: includeConfig ? constructedConfig : undefined
   };
 }

@@ -219,6 +219,22 @@ function buildCharacterPrompt({
     })
     .filter(Boolean)
     .join("\n");
+  const canonicalPeopleFacts = (allCharacters || [])
+    .map((entry) => {
+      const name = String(entry?.name || entry?.id || "").trim();
+      if (!name) return "";
+      const entryRole = formatValue(entry?.role, language);
+      const entryVictimRelation = formatValue(entry?.relationship_to_victim, language);
+      const details = [
+        entryRole ? `role: ${entryRole}` : "",
+        entryVictimRelation ? `victim relation: ${entryVictimRelation}` : ""
+      ]
+        .filter(Boolean)
+        .join("; ");
+      return details ? `- ${name} (${details})` : `- ${name}`;
+    })
+    .filter(Boolean)
+    .join("\n");
 
   const caseLocations = Array.isArray(publicState?.case_locations)
     ? publicState.case_locations
@@ -330,6 +346,8 @@ function buildCharacterPrompt({
     "If you evade or stall, suspicion rises. Consider whether sharing safe details reduces heat.",
     "Let your stance toward the detective affect your tone and cooperation.",
     "Use revealed investigation facts as anchors; do not invent chain evidence not listed.",
+    "Canonical people facts are authoritative. Do not redefine another person's role.",
+    "If asked who someone is or their relation, align with canonical people facts.",
     "If the detective bluffs, react based on pressure and revealed facts. Consider partial admissions.",
     "Choose how much background or history to reveal based on your goals and the detective's pressure.",
     "Do not repeat your previous sentence verbatim.",
@@ -359,6 +377,8 @@ function buildCharacterPrompt({
     backgroundLines || "-",
     "Known relationships (with others):",
     relationshipLines || "-",
+    "Canonical people facts (do not contradict):",
+    canonicalPeopleFacts || "-",
     "Known relationship history timeline:",
     historyLines || "-",
     "Story anchors (use when asked):",
