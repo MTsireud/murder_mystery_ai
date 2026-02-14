@@ -946,6 +946,6 @@ Dependencies:
 5. No runtime intro generation occurs in player session.
 
 ### 20.14 Release Operations (2026-02-14)
-- [ ] RO1. Restart local app/server and run smoke verification before branch promotion.
-- [ ] RO2. Merge `codex/upgrade` into `main` with a fast-forward-only update.
-- [ ] RO3. Push updated `main` to `origin` for production launch.
+- [x] RO1. Restart local app/server and run smoke verification before branch promotion.
+- [x] RO2. Merge `codex/upgrade` into `main` with a fast-forward-only update.
+- [x] RO3. Push updated `main` to `origin` for production launch.
